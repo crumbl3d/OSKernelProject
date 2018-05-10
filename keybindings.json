@@ -1,0 +1,62 @@
+[
+{
+    "key": "f5",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Build and Run",
+    "when": "!isDebugMode"
+},
+{
+    "key": "ctrl+f5",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Run",
+    "when": "!isDebugMode"
+},
+{
+    "key": "shift+f5",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Debug",
+    "when": "!isDebugMode"
+},
+{
+    "key": "f6",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Build",
+    "when": "!isDebugMode"
+},
+{
+    "key": "ctrl+f6",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Rebuild",
+    "when": "!isDebugMode"
+},
+{
+    "key": "shift+f6",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Compile",
+    "when": "!isDebugMode"
+},
+{
+    "key": "alt+f6",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Clean",
+    "when": "!isDebugMode"
+},
+{
+    "key": "f7",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Generate Assembly",
+    "when": "!isDebugMode & !isInDiffEditor"
+},
+{
+    "key": "ctrl+f7",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Regenerate Assembly",
+    "when": "!isDebugMode"
+},
+{
+    "key": "alt+f7",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Clean Assembly",
+    "when": "!isDebugMode"
+}
+]

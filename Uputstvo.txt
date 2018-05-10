@@ -1,0 +1,52 @@
+Preduslovi:
+
+1 - Potrebno je instalirati C/C++ ekstenziju za VS Code radi IntelliSense-a.
+2 - Struktura foldera u kome se nalazi projekat mora biti sledeca:
+
+"Project Folder"\ - samo ime foldera u kome se nalazi projekat
+    h\ - include fajlovi samog projekta
+    include\ - dodatni include fajlovi (SCHEDULE.H)
+    lib\ - dodatni lib fajlovi (APPLICAT.LIB)
+    src\ - source fajlovi samog projekta
+
+Koraci:
+
+1 - Folder .vscode treba prekopirati u folder gde se nalazi projekat.
+2 - U VS Code-u otvoriti projekat i pokrenuti Task - Build.
+    Kreiraju se folderi obj\ i output\ u folderu projekta. U folderu obj\ se smestaju
+    objektni fajlovi, a u folder output\ sam izvrsni fajl (naziv se moze promeniti u
+    makefile-u). Ukoliko se kompajlira do assemblera (videti opcije dole), kreira se
+    ime folder asm\ u kome se smestaju odgovarajuci fajlovi.
+3 - Napravljene su i precice na tastaturi koje se nalaze u fajlu keybindings.json. Da
+    bi se omogucile potrebno je u VS Code-u napraviti korisnicki keybindings.json i
+    prekopirati sadrzaj datog fajla.
+
+Precice su sledece:
+
+    F5          - Build and Run (bilduje projekat pa pokrece)
+    Ctrl + F5   - Run (pokrece bez prethodnog bildovanja)
+    Shift + F5  - Debug (pokrece se Turbo Debugger)
+    F6          - Build (samo bilduje projekat)
+    Ctrl + F6   - Rebuild (cisti projekat pa bilduje)
+    Shift + F6  - Compile (kompajlira do .obj fajlova - bez linkovanja)
+    Alt + F6    - Clean (cisti projekat)
+    F7          - Generate Assembly (kompajlira do .asm)
+    Ctrl + F7   - Regenerate Assembly (cisti samo asm\ folder i kompajlira do .asm)
+    Alt + F7    - Clean Assembly (cisti samo asm\ folder)
+
+Ukoliko imate nekih problema, napisite ih u komentaru na postu. Direktne poruke bice
+odbijene. Ne odgovaram za izgubljene fajlove, sami snosite posledice koriscenja ovde
+prilozenog alata. Znajte da je dosta kose opalo tokom kreiranja ovog alata i stoga bi
+kosa bila zahvalna ukoliko joj se zahvalite. Pozdrav i puno srece u izradi projekta,
+
+    Jovan Nikolov 2016/0040
+
+PS: Ovim bih da se zahvalim Konstantinu Djordjevicu na velikoj pomoci u realizaciji
+    ovog alata kao i na alatu za veoma popularni Sublime Text editor. Moja zelja je
+    bila da napravim alat za VS Code jer smatram da je jednostavniji za koriscenje kao
+    i da pruza dosta bolji syntax highlighting i IntelliSense.
+
+Verzije:
+
+1.0 (10-05-2018):
+    Prva verzija.
