@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/bcc4Eclipse.toolChain.1153672940/PATH/delimiter=;
+environment/project/bcc4Eclipse.toolChain.1153672940/PATH/operation=replace
+environment/project/bcc4Eclipse.toolChain.1153672940/PATH/value=C\:\\bc31\\bin;
+environment/project/bcc4Eclipse.toolChain.1153672940/append=true
+environment/project/bcc4Eclipse.toolChain.1153672940/appendContributed=true

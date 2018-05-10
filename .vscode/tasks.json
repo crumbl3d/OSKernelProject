@@ -1,0 +1,69 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile compile",
+            "group": "build"
+        },
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile all",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile clean"
+        },
+        {
+            "label": "Rebuild",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile @clean all",
+            "group": "build"
+        },
+        {
+            "label": "Generate Assembly",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile asm",
+            "group": "build"
+        },
+        {
+            "label": "Clean Assembly",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile cleanasm"
+        },
+        {
+            "label": "Regenerate Assembly",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile @cleanasm asm",
+            "group": "build"
+        },
+        {
+            "label": "Build and Run",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile all run",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile run",
+            "group": "test"
+        },
+        {
+            "label": "Debug",
+            "type": "shell",
+            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile debug",
+            "group": "test"
+        }
+    ]
+}

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
+	<storageModule moduleId="org.eclipse.cdt.core.settings">
+		<cconfiguration id="bcc4Eclipse.toolChain.1153672940">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="bcc4Eclipse.toolChain.1153672940" moduleId="org.eclipse.cdt.core.settings" name="Default">
+				<externalSettings/>
+				<extensions>
+					<extension id="org.eclipse.cdt.core.PE" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="bcc4Eclipse.ErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration buildProperties="" description="" id="bcc4Eclipse.toolChain.1153672940" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
+					<folderInfo id="bcc4Eclipse.toolChain.1153672940.1131721290" name="/" resourcePath="">
+						<toolChain id="bcc4Eclipse.toolChain.1629271243" name="bccToolchain" superClass="bcc4Eclipse.toolChain">
+							<targetPlatform binaryParser="org.eclipse.cdt.core.PE" id="bcc4Eclipse.targetPlatform.1808348685" isAbstract="false" superClass="bcc4Eclipse.targetPlatform"/>
+							<builder buildPath="${workspace_loc:/OSKernelProject}/BCC" id="bcc4Eclipse.builder.1699468979" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="bcc" superClass="bcc4Eclipse.builder"/>
+						</toolChain>
+					</folderInfo>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
+	</storageModule>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="0.614771527">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+	</storageModule>
+	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+		<project id="OSKernelProject.null.583325838" name="OSKernelProject"/>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Default">
+			<resource resourceType="PROJECT" workspacePath="/OSKernelProject"/>
+		</configuration>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+</cproject>

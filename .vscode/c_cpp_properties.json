@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "browse": {
+                "path": [
+                    "C:\\bc31\\INCLUDE",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "C:\\bc31\\INCLUDE",
+                "${workspaceFolder}"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "cStandard": "c89",
+            "cppStandard": "c++98",
+            "intelliSenseMode": "msvc-x64"
+        }
+    ],
+    "version": 4
+}
