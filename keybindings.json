@@ -44,19 +44,25 @@
 {
     "key": "f7",
     "command": "workbench.action.tasks.runTask",
-    "args": "Generate Assembly",
+    "args": "Generate Preprocessor Information",
     "when": "!isDebugMode & !isInDiffEditor"
 },
 {
     "key": "ctrl+f7",
     "command": "workbench.action.tasks.runTask",
-    "args": "Regenerate Assembly",
+    "args": "Regenerate Preprocessor Information",
     "when": "!isDebugMode"
+},
+{
+    "key": "shift+f7",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Generate Assembly Information",
+    "when": "!isDebugMode & !isInDiffEditor"
 },
 {
     "key": "alt+f7",
     "command": "workbench.action.tasks.runTask",
-    "args": "Clean Assembly",
+    "args": "Regenerate Assembly Information",
     "when": "!isDebugMode"
 }
 ]

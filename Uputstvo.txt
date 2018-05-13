@@ -11,12 +11,13 @@ Preduslovi:
 
 Koraci:
 
-1 - Folder .vscode treba prekopirati u folder gde se nalazi projekat.
+1 - Foldere .vscode i make treba prekopirati u folder u kome se nalazi projekat.
 2 - U VS Code-u otvoriti projekat i pokrenuti Task - Build.
     Kreiraju se folderi obj\ i output\ u folderu projekta. U folderu obj\ se smestaju
     objektni fajlovi, a u folder output\ sam izvrsni fajl (naziv se moze promeniti u
-    makefile-u). Ukoliko se kompajlira do assemblera (videti opcije dole), kreira se
-    ime folder asm\ u kome se smestaju odgovarajuci fajlovi.
+    makefile-u). Ukoliko se poziva pretprocesor (videti opcije dole), kreira se folder
+    prep\ i u njemu odgovarajuci fajlovi. Takodje, ukoliko se kompajlira do asemblera
+    (videti opcije dole), kreira se folder asm\ i u njemu odgovarajuci fajlovi.
 3 - Napravljene su i precice na tastaturi koje se nalaze u fajlu keybindings.json. Da
     bi se omogucile potrebno je u VS Code-u napraviti korisnicki keybindings.json i
     prekopirati sadrzaj datog fajla.
@@ -30,9 +31,12 @@ Precice su sledece:
     Ctrl + F6   - Rebuild (cisti projekat pa bilduje)
     Shift + F6  - Compile (kompajlira do .obj fajlova - bez linkovanja)
     Alt + F6    - Clean (cisti projekat)
-    F7          - Generate Assembly (kompajlira do .asm)
-    Ctrl + F7   - Regenerate Assembly (cisti samo asm\ folder i kompajlira do .asm)
-    Alt + F7    - Clean Assembly (cisti samo asm\ folder)
+    F7          - Generate Preprocessor Information (kompajlira do .i)
+    Ctrl + F7   - Regenerate Preprocessor Information (cisti samo prep\ folder i
+                                                       generise .i fajlove)
+    Shift + F7  - Generate Assembly Information (kompajlira do .asm)
+    Alt + F7    - Regenerate Assembly Information (cisti samo asm\ folder i
+                                                   generise .asm fajlove)
 
 Ukoliko imate nekih problema, napisite ih u komentaru na postu. Direktne poruke bice
 odbijene. Ne odgovaram za izgubljene fajlove, sami snosite posledice koriscenja ovde
@@ -48,5 +52,8 @@ PS: Ovim bih da se zahvalim Konstantinu Djordjevicu na velikoj pomoci u realizac
 
 Verzije:
 
+1.1 (13-05-2018):
+    Velika promena makefile-a kako bi radio nezavisno od velicine slova u imenima
+    izvornih fajlova.
 1.0 (10-05-2018):
     Prva verzija.
