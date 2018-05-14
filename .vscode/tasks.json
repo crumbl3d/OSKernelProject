@@ -2,15 +2,67 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Generate Preprocessor Information",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make prep",
+            "group": "build"
+        },
+        {
+            "label": "Clean Preprocessor Information",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make cleanprep",
+            "group": "build"
+        },
+        {
+            "label": "Regenerate Preprocessor Information",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make @cleanprep prep",
+            "group": "build"
+        },
+        {
+            "label": "Generate Assembly Information",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make asm",
+            "group": "build"
+        },
+        {
+            "label": "Clean Assembly Information",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make cleanasm"
+        },
+        {
+            "label": "Regenerate Assembly Information",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make @cleanasm asm",
+            "group": "build"
+        },
+        {
             "label": "Compile",
             "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile compile",
+            "command": "cd ${workspaceFolder}\\make & make compile",
             "group": "build"
+        },
+        {
+            "label": "Clean Object Files",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make cleanobj",
+            "group": "build"
+        },
+        {
+            "label": "Recompile",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make @cleanobj compile",
+            "group": "build"
+        },
+        {
+            "label": "Clean Object Files",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make cleanasm"
         },
         {
             "label": "Build",
             "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile all",
+            "command": "cd ${workspaceFolder}\\make & make all",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -19,35 +71,18 @@
         {
             "label": "Clean",
             "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile clean"
+            "command": "cd ${workspaceFolder}\\make & make clean"
         },
         {
             "label": "Rebuild",
             "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile @clean all",
-            "group": "build"
-        },
-        {
-            "label": "Generate Assembly",
-            "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile asm",
-            "group": "build"
-        },
-        {
-            "label": "Clean Assembly",
-            "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile cleanasm"
-        },
-        {
-            "label": "Regenerate Assembly",
-            "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile @cleanasm asm",
+            "command": "cd ${workspaceFolder}\\make & make @clean all",
             "group": "build"
         },
         {
             "label": "Build and Run",
             "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile all run",
+            "command": "cd ${workspaceFolder}\\make & make all & make run",
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -56,13 +91,19 @@
         {
             "label": "Run",
             "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile run",
+            "command": "cd ${workspaceFolder}\\make & make run",
             "group": "test"
         },
         {
             "label": "Debug",
             "type": "shell",
-            "command": "${workspaceFolder}\\.vscode\\make -f ${workspaceFolder}\\.vscode\\makefile debug",
+            "command": "cd ${workspaceFolder}\\make & make debug",
+            "group": "test"
+        },
+        {
+            "label": "Debug Info",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}\\make & make debuginfo",
             "group": "test"
         }
     ]
