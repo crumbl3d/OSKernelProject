@@ -52,6 +52,9 @@ PS: Ovim bih da se zahvalim Konstantinu Djordjevicu na velikoj pomoci u realizac
 
 Verzije:
 
+1.2 (15-05-2018):
+    Pokusaj zaobilaska problema sa linkerom. Linker ne parsira komandu ako je duza od
+    127 karaktera. Stoga se ne izvrsava ukoliko ima vise fajlova u projektu.
 1.1 (13-05-2018):
     Velika promena makefile-a kako bi radio nezavisno od velicine slova u imenima
     izvornih fajlova.
