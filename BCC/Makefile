@@ -1,8 +1,8 @@
 SRC = ..\src\*.cpp 
-INCLUDES = 
-LIBS = 
-INCLUDEPATH = C:\bc31\include;
-LIBSPATH = C:\bc31\lib;
+INCLUDES = ..\include\*.h ..\h\*.h 
+LIBS = ..\lib\*.lib 
+INCLUDEPATH = C:\bc31\include;..\include;..\h;
+LIBSPATH = C:\bc31\lib;..\lib;
 TARGET = Kernel.exe
 $(TARGET):	$(SRC) $(INCLUDES) configuration.xmi
 	bcc.exe -mh -v -e$(TARGET) -I$(INCLUDEPATH) -L$(LIBSPATH) $(SRC) $(LIBS)

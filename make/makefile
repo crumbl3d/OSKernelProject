@@ -27,13 +27,13 @@ src-to-obj		= $(addprefix $(OBJPATH)/,$(call uc,$(patsubst %.cpp,%.obj,$(call lc
 # After calling eval generates rules for all files.
 define generate-rules
 $(call src-to-prep,$1): $1 $(H)
-	@-md $(WPREPPATH) 2>nul&
+	@-md $(WPREPPATH) 2> nul & ver > nul
 	@call $(CPP) $(CPPFLAGS) /o$$(call unix-to-dos,$$@) $$(call unix-to-dos,$$<)
 $(call src-to-asm,$1): $1 $(H)
-	@-md $(WASMPATH) 2>nul&
+	@-md $(WASMPATH) 2> nul & ver > nul
 	@call $(CXX) /S $(CXXFLAGS) /o$$(call unix-to-dos,$$@) $$(call unix-to-dos,$$<)
 $(call src-to-obj,$1): $1 $(H)
-	@-md $(WOBJPATH) 2>nul&
+	@-md $(WOBJPATH) 2> nul & ver > nul
 	@call $(CXX) $(CXXFLAGS) /o$$(call unix-to-dos,$$@) $$(call unix-to-dos,$$<)
 endef
 
@@ -47,7 +47,6 @@ ASMPATH			:= $(PROJECTDIR)/$(ASMDIR)
 OBJPATH			:= $(PROJECTDIR)/$(OBJDIR)
 OUTPUTPATH		:= $(PROJECTDIR)/$(OUTPUTDIR)
 
-WSRCPATH		:= $(call unix-to-dos,$(SRCPATH))
 WHPATH			:= $(call unix-to-dos,$(HPATH))
 WINCLUDEPATH	:= $(call unix-to-dos,$(INCLUDEPATH))
 WLIBPATH		:= $(call unix-to-dos,$(LIBPATH))
@@ -59,16 +58,21 @@ WOUTPUTPATH		:= $(call unix-to-dos,$(OUTPUTPATH))
 # Compiler and linker location and flags.
 # You should only ever change WCPATH.
 WCPATH			:= C:\bc31
+WCBINPATH		:= $(WCPATH)\bin
 WCINCLUDEPATH	:= $(WCPATH)\include
 WCLIBPATH		:= $(WCPATH)\lib
-CPP				:= $(WCPATH)\bin\cpp.exe
+
+CPP				:= $(WCBINPATH)\cpp.exe
 CPPFLAGS		:= /m$(MEMMODEL) /w /I$(WHPATH);$(WINCLUDEPATH);$(WCINCLUDEPATH)
-CXX				:= $(WCPATH)\bin\bcc.exe
+CXX				:= $(WCBINPATH)\bcc.exe
 CXXFLAGS		:= /c /m$(MEMMODEL) /v /y /w /I$(WHPATH);$(WINCLUDEPATH);$(WCINCLUDEPATH) /L$(WLIBPATH);$(WCLIBPATH)
-TLINK			:= $(WCPATH)\bin\tlink.exe
-TLINKFLAGS		:= /c /l /v /x /L$(WCLIBPATH)
-TD				:= $(WCPATH)\bin\td.exe
-TDFLAGS			:= /c$(WCPATH)\bin\tdconfig.td
+TLINK			:= $(WCBINPATH)\tlink.exe
+TLINKFLAGS		:= /c /l /v /x
+TD				:= $(WCBINPATH)\td.exe
+TDFLAGS			:= /c$(WCBINPATH)\tdconfig.td
+
+# Stripping extension for use in messages.
+TARGETNAME		:= $(basename $(TARGETNAME))
 
 # Internal generated variables. You should not change these.
 SRC				:= $(strip $(wildcard $(SRCPATH)/*.cpp) $(wildcard $(SRCPATH)/*.CPP))
@@ -77,19 +81,26 @@ LIB				:= $(strip $(wildcard $(LIBPATH)/*.lib) $(wildcard $(LIBPATH)/*.LIB))
 PREP			:= $(call src-to-prep,$(SRC))
 ASM				:= $(call src-to-asm,$(SRC))
 OBJ				:= $(call src-to-obj,$(SRC))
-TARGET			:= $(OUTPUTPATH)/$(subst .EXE,,$(call uc,$(TARGETNAME))).EXE
+TARGET			:= $(OUTPUTPATH)/$(call uc,$(TARGETNAME)).EXE
 
-WSRC			:= $(call unix-to-dos,$(SRC))
-WH				:= $(call unix-to-dos,$(H))
-WLIB			:= $(call unix-to-dos,$(LIB))
-WPREP			:= $(call unix-to-dos,$(PREP))
-WASM			:= $(call unix-to-dos,$(ASM))
-WOBJ			:= $(call unix-to-dos,$(OBJ))
 WTARGET			:= $(call unix-to-dos,$(TARGET))
 
+M				:= $(call uc,$(MEMMODEL))
+LIBNAMES		:= $(basename $(notdir $(LIB))) C$M EMU MATH$M
+OBJNAMES		:= C0$M $(basename $(notdir $(OBJ)))
+
 $(TARGET): $(OBJ)
-	@-md $(WOUTPUTPATH) 2>nul&
-	@call $(TLINK) $(TLINKFLAGS) c0$(MEMMODEL) $(WOBJ), $(WTARGET), , $(WLIB) c$(MEMMODEL) emu math$(MEMMODEL)
+	@-md $(WOUTPUTPATH) 2> nul & ver > nul
+	@copy $(WOBJPATH)\*.OBJ $(WOUTPUTPATH) > nul
+	@copy $(WLIBPATH)\*.LIB $(WOUTPUTPATH) > nul
+	@copy $(WCLIBPATH)\C0$M.OBJ $(WOUTPUTPATH) > nul
+	@copy $(WCLIBPATH)\C$M.LIB $(WOUTPUTPATH) > nul
+	@copy $(WCLIBPATH)\EMU.LIB $(WOUTPUTPATH) > nul
+	@copy $(WCLIBPATH)\MATH$M.LIB $(WOUTPUTPATH) > nul
+	@-cd $(WOUTPUTPATH) 2> nul & \
+	@call $(TLINK) $(TLINKFLAGS) $(OBJNAMES),$(TARGETNAME),,$(LIBNAMES)
+	@-del $(WOUTPUTPATH)\*.OBJ 2> nul & ver > nul
+	@-del $(WOUTPUTPATH)\*.LIB 2> nul & ver > nul
 
 $(foreach d,$(SRC),$(eval $(call generate-rules,$d)))
 
@@ -106,26 +117,26 @@ all: $(TARGET)
 	@echo "$(TARGETNAME)" is up to date!
 
 @cleanprep:
-	@-rd /s /q $(WPREPPATH) 2>nul&
+	@-rd /s /q $(WPREPPATH) 2> nul & ver > nul
 
 cleanprep: @cleanprep
 	@echo Successfully cleaned preprocessor information!
 
 @cleanasm:
-	@-rd /s /q $(WASMPATH) 2>nul&
+	@-rd /s /q $(WASMPATH) 2> nul & ver > nul
 
 cleanasm: @cleanasm
 	@echo Successfully cleaned assembly information!
 
 @cleanobj:
-	@-rd /s /q $(WOBJPATH) 2>nul&
+	@-rd /s /q $(WOBJPATH) 2> nul & ver > nul
 
 cleanobj: @cleanobj
 	@echo Successfully cleaned object files!
 
 @clean: @cleanprep @cleanasm @cleanobj
-	@-rd /s /q $(WOUTPUTPATH) 2>nul&
-	@-del *.$$LN 2>nul&
+	@-rd /s /q $(WOUTPUTPATH) 2> nul & ver > nul
+	@-del *.$$LN 2> nul & ver > nul
 
 clean: @clean
 	@echo Successfully cleaned project!
@@ -168,7 +179,6 @@ debuginfo:
 	$(info OBJPATH is $(OBJPATH))
 	$(info OUTPUTPATH is $(OUTPUTPATH))
 	$(info )
-	$(info WSRCPATH is $(WSRCPATH))
 	$(info WHPATH is $(WHPATH))
 	$(info WINCLUDEPATH is $(WINCLUDEPATH))
 	$(info WLIBPATH is $(WLIBPATH))
@@ -178,8 +188,10 @@ debuginfo:
 	$(info WOUTPUTPATH is $(WOUTPUTPATH))
 	$(info )
 	$(info WCPATH is $(WCPATH))
+	$(info WCBINPATH is $(WCBINPATH))
 	$(info WCINCLUDEPATH is $(WCINCLUDEPATH))
 	$(info WCLIBPATH is $(WCLIBPATH))
+	$(info )
 	$(info CPP is $(CPP))
 	$(info CPPFLAGS is $(CPPFLAGS))
 	$(info CXX is $(CXX))
@@ -197,13 +209,12 @@ debuginfo:
 	$(info OBJ is $(OBJ))
 	$(info TARGET is $(TARGET))
 	$(info )
-	$(info WSRC is $(WSRC))
-	$(info WH is $(WH))
-	$(info WLIB is $(WLIB))
-	$(info WPREP is $(WPREP))
-	$(info WASM is $(WASM))
-	$(info WOBJ is $(WOBJ))
 	$(info WTARGET is $(WTARGET))
+	$(info )
+	$(info M is $(M))
+	$(info LIBNAMES is $(LIBNAMES))
+	$(info OBJNAMES is $(OBJNAMES))
+	$(info )
 	$(info $(foreach d,$(SRC),$(call generate-rules,$d)))
 
 .PHONY: prep asm compile all @cleanprep cleanprep @cleanasm cleanasm @cleanobj cleanobj @clean clean run debug debuginfo

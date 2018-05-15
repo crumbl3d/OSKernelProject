@@ -11,9 +11,12 @@
             },
             "includePath": [
                 "C:\\bc31\\INCLUDE",
+                "${workspaceFolder}\\include",
+                "${workspaceFolder}\\h",
                 "${workspaceFolder}"
             ],
             "defines": [
+                "BCC_BLOCK_IGNORE",
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE"
