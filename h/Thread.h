@@ -1,26 +1,23 @@
-#ifndef _thread_h_
-#define _thread_h_
+/*
+ * Thread.h
+ * 
+ * Created on: May 14, 2018
+ *     Author: Jovan Nikolov 2016/0040
+ */
+
+#ifndef _THREAD_H_
+#define _THREAD_H_
 
 typedef unsigned long StackSize;
 typedef unsigned int Time; // time, x 55ms
 typedef int ID;
 
-const StackSize defaultStackSize = 4096;
-//const StackSize maxStackSize = 65535;
+const StackSize defaultStackSize = 4096; // default = 4KB
+const StackSize maxStackSize = 65535; // max = 64KB
 const Time defaultTimeSlice = 2; // default = 2*55ms
 
-// Kernel's implementation of a user's thread
-class PCB
-{
-public:
-    unsigned *stack;
-    unsigned ss;
-    unsigned sp;
-    unsigned bp;
-    unsigned timeSlice;
-};
+class KernelThr; // Kernel's implementation of a user's thread
 
-// User and kernel thread.
 class Thread
 {
 public:
@@ -31,16 +28,16 @@ public:
 
     static void sleep(Time timeToSleep);
 protected:
-    friend class PCB;
+    friend class System;
 
-    Thread(StackSize stackSize = defaultStackSize, Time timeSlice =
-           defaultTimeSlice);
+    Thread(StackSize stackSize = defaultStackSize,
+           Time timeSlice = defaultTimeSlice);
 
     virtual void run() {}
 private:
-    PCB* myPCB;
+    KernelThr* mKernelThr;
 };
 
-void dispatch ();
+void dispatch();
 
-#endif
+#endif /* _THREAD_H_ */

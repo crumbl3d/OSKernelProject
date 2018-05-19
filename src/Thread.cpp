@@ -1,20 +1,43 @@
+/*
+ * Thread.cpp
+ *
+ * Created on: May 14, 2018
+ *     Author: Jovan Nikolov 2016/0040
+ */
+
 #include <stdio.h>
 
 #include "Thread.h"
-#include "SCHEDULE.H"
+#include "KThread.h"
+#include "System.h"
 
-void Thread::start() {}
+void Thread::start()
+{
+    mKernelThr->start();
+}
 
-void Thread::waitToComplete() {}
+void Thread::waitToComplete()
+{
+    mKernelThr->waitToComplete();
+}
 
-Thread::~Thread() {}
+Thread::~Thread()
+{
+    delete mKernelThr;
+}
 
 void Thread::sleep(Time timeToSleep)
 {
-    printf("timeToSleep: %d\n", timeToSleep);
+    System::sleep(timeToSleep);
 }
 
 Thread::Thread(StackSize stackSize, Time timeSlice)
 {
-    printf("stackSize: %d timeSlice: %d\n", stackSize, timeSlice);
+    if (stackSize > maxStackSize) stackSize = maxStackSize;
+    mKernelThr = new KernelThr(stackSize, timeSlice, this);
+}
+
+void dispatch()
+{
+    System::dispatch();
 }
