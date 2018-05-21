@@ -15,41 +15,60 @@
 
 // extern int userMain(int argc, char* argv[]);
 
-void run()
+void runA()
 {
-    printf("Running test thread!\n");
-    System::threadExit();
+    for (int i = 0; i < 30; ++i)
+    {
+        System::lock();
+        printf("Thread A! i = %d\n", i);
+        System::unlock();
+        if (System::changeContext) dispatch();
+        for (int j = 0; j < 10000; ++j)
+            for (int k = 0; k < 30000; ++k);
+    }
+    System::threadStop();
+}
+
+void runB()
+{
+    for (int i = 0; i < 30; ++i)
+    {
+        System::lock();
+        printf("Thread B! i = %d\n", i);
+        System::unlock();
+        if (System::changeContext) dispatch();
+        for (int j = 0; j < 10000; ++j)
+            for (int k = 0; k < 30000; ++k);
+    }
+    System::threadStop();
 }
 
 int userMain(int argc, char* argv[])
 {
-    PCB t(run, 4096, 20);
-    t.start();
+    PCB thrA(runA), thrB(runB);
+    thrA.setTimeSlice(40);
+    thrB.setTimeSlice(20);
+    thrA.start();
+    thrB.start();
 
-    //dispatch();
+    for (int i = 0; i < 30; ++i)
+    {
+        #ifndef BCC_BLOCK_IGNORE
+        asmLock();
+        printf("main %d\n", i);
+        asmUnlock();
+        #endif
 
-    for (long i = 0; i < 65535; ++i)
-        for (long j = 0; j < 33000; ++j);
+        for (int j = 0; j < 30000; ++j)
+            for (int k = 0; k < 30000; ++k);
+    }
 
-    // #ifndef BCC_BLOCK_IGNORE
-    // SysCallData temp;
-    // temp.clsName = SysCallData::Thread;
-    // unsigned tempSS = FP_SEG(&temp);
-    // unsigned tempSP = FP_OFF(&temp);
-    // printf("seg: %d off %d\n", tempSS, tempSP);
-    // asm {
-    //     mov bx, tempSS
-    //     mov dx, tempSP
-    // }
-    // asmInterrupt(SysCallEntry);
-    // #endif
-    
     return 0;
 }
 
 void tick()
 {
-    printf("*");
+    //printf("*");
 }
 
 int result;

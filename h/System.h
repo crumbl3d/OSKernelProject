@@ -21,15 +21,15 @@ const unsigned SysCallEntry = 0x61;
 
 class PCB;
 
+struct ObjectType { enum ObjectTypeEnum { Thread, Semaphore, Event }; };
+struct ThreadRequestType { enum ThreadRequestTypeEnum { Create, Destroy, Start, Stop, WaitToComplete, Sleep, Dispatch }; };
+struct SemaphoreRequestType { enum SemaphoreRequestTypeEnum { Create, Destroy, Wait, Signal }; };
+struct EventRequestType { enum EventRequestTypeEnum { Create, Destroy, Wait, Signal }; };
+
 struct SysCallData
 {
-    enum ClassName { Thread, Semaphore, Event };
-    enum ThreadCallName { Dispatch }; // TODO: Write all calls...
-    enum SemaphoreCallName { }; // TODO: Write all calls...
-    enum EventCallName { }; // TODO: Write all calls...
-
-    ClassName clsName;
-    int callName;
+    unsigned objType;
+    unsigned reqType;
     // TODO: add data...
 };
 
@@ -39,32 +39,31 @@ public:
     static void initialize();
     static void finalize();
 
-    static void sleep(unsigned timeToSleep);
-    static void dispatch();
-
     static void threadPut(PCB *thread);
     static void threadPriorityPut(PCB *thread);
     static PCB* threadGet();
 
-    static void threadExit();
-private:
-    static void interrupt newTimer(...);
-    static void interrupt sysCall(...);
+    static void threadStop();
+
+//private:
+    static void interrupt newTimerRoutine(...);
+    static void interrupt sysCallRoutine(...);
 
     static void idleBody();
-
+    static void kernelBody();
+    
     static void lock();
     static void unlock();
 
-    static pInterrupt oldTimer;
+    static pInterrupt oldTimerRoutine;
     // Global system call data.
     static volatile SysCallData *callData;
     // Kernel flags: locked (forbid preemption),
     //               changeContext (requested context change)
-    static volatile unsigned locked, changeContext;
+    static volatile unsigned locked, changeContext, restoreUserThread;
     // Counters: tickCount (number of timer ticks passed),
-    //           threadCount (number of threads in the scheduler)
-    static volatile unsigned tickCount, threadCount;
+    //           readyThreadCount (number of threads in the scheduler)
+    static volatile unsigned tickCount, readyThreadCount;
     // System threads: initial
     static volatile PCB *initial, *idle; // initial and idle threads
     static volatile PCB *running, *runningKernelThread; // current user and kernel threads

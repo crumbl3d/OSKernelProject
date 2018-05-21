@@ -5,10 +5,9 @@
  *     Author: Jovan Nikolov 2016/0040
  */
 
-#include <DOS.H>
-#include <STDIO.H> // debug only remove
+#include <stdio.h> // TEMPORARY
+#include <dos.h>
 
-#include "Schedule.h"
 #include "Macro.h"
 #include "KThread.h"
 #include "Thread.h"
@@ -22,7 +21,9 @@ PCB::PCB()
     mStack = 0;
     mBP = mSP = mSS = 0;
     mTimeSlice = defaultTimeSlice;
-    mState = Running;
+    mState = New;
+    mStackSize = 0;
+    mBody = 0;
     mThread = 0;
     mNext = 0;
     #ifndef BCC_BLOCK_IGNORE
@@ -50,6 +51,8 @@ PCB::PCB(Thread *thread, StackSize stackSize, Time timeSlice)
     #endif
     mTimeSlice = timeSlice;
     mState = New;
+    mStackSize = stackSize;
+    mBody = 0; // This is irrelevant for this constructor.
     mThread = thread;
     mNext = 0;
     #ifndef BCC_BLOCK_IGNORE
@@ -76,6 +79,8 @@ PCB::PCB(pBody body, StackSize stackSize, Time timeSlice)
     // mStack[stackSize - 12] = BP (base pointer)
     mTimeSlice = timeSlice;
     mState = New;
+    mStackSize = stackSize;
+    mBody = body;
     mThread = 0;
     mNext = 0;
     #ifndef BCC_BLOCK_IGNORE
@@ -90,11 +95,45 @@ PCB::~PCB()
 
 void PCB::start()
 {
+    mState = Ready;
     System::threadPut(this);
-    //System::threadWrapper();
 }
 
 void PCB::waitToComplete()
 {
 
+}
+
+void PCB::setTimeSlice(Time timeSlice)
+{
+    mTimeSlice = timeSlice;
+}
+
+void PCB::reset()
+{
+    mStack[mStackSize - 1] = 0x200; // PSW
+    #ifndef BCC_BLOCK_IGNORE
+    mStack[mStackSize - 2] = FP_SEG(mBody); // CS
+    mStack[mStackSize - 3] = FP_OFF(mBody); // PC
+    mSS = FP_SEG(mStack + mStackSize - 12);
+    mBP = mSP = FP_OFF(mStack + mStackSize - 12);
+    #endif
+}
+
+void PCB::dispatch()
+{
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    SysCallData data;
+    data.objType = ObjectType::Thread;
+    data.reqType = ThreadRequestType::Dispatch;
+    sysCall(data);
+    asmInterrupt(TimerEntry);
+    asmUnlock();
+    #endif
+}
+
+void PCB::sleep(unsigned timeToSleep)
+{
+    printf("Time to sleep: %d\n", timeToSleep);
 }

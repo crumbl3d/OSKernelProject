@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 
+#include "Macro.h"
 #include "Thread.h"
 #include "KThread.h"
 #include "System.h"
@@ -30,7 +31,7 @@ Thread::~Thread()
 
 void Thread::sleep(Time timeToSleep)
 {
-    System::sleep(timeToSleep);
+    PCB::sleep(timeToSleep);
 }
 
 Thread::Thread(StackSize stackSize, Time timeSlice)
@@ -43,10 +44,10 @@ void Thread::wrapper(Thread *running)
 {
     running->run();
     // umesto ovoga mora da se zove syscall(threadExit);
-    System::threadExit();
+    System::threadStop();
 }
 
 void dispatch()
 {
-    System::dispatch();
+    PCB::dispatch();
 }

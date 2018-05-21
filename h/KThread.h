@@ -37,7 +37,14 @@ public:
     void start();
     void waitToComplete();
 
-    void setTimeSlice(Time timeSlice) { mTimeSlice = timeSlice; }
+    void setTimeSlice(Time timeSlice);
+
+    // replace with while(1) in kernel's run
+    // method or something else down the line
+    void reset();
+
+    static void sleep(unsigned timeToSleep);
+    static void dispatch();
 private:
     friend class System;
 
@@ -48,6 +55,11 @@ private:
     unsigned mBP;
     unsigned mTimeSlice;
     State mState;
+
+    // Used when reseting the thread.
+    // remove when you remove reset()
+    unsigned mStackSize;
+    pBody mBody;
 
     // Link to the user thread and next kernel thread
     Thread *mThread;
