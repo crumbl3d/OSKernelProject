@@ -70,7 +70,6 @@ void System::finalize()
 
 void System::threadStop()
 {
-    //printf("Exiting thread!\n");
     if (!running) return; // Exception, no running thread!
     running->mState = PCB::Terminated;
     PCB::dispatch();
@@ -130,7 +129,6 @@ void interrupt System::newTimerRoutine(...)
             if (tickCount == 0) changeContext = 1;
         }
     }
-    //else printf("Explicit context change required!\n");
     // If a context change is required and preemption is allowed,
     // and there is at least one Ready thread or the running thread
     // is Terminated (we need to switch to the idle thread).
@@ -203,6 +201,7 @@ void interrupt System::sysCallRoutine(...)
         {
             if (running->mState != PCB::Terminated) threadPut((PCB*) running);
             running = threadGet();
+            tickCount = running->mTimeSlice;
             systemChangeContext = 0;
         }
         
