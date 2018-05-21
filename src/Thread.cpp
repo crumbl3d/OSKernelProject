@@ -11,19 +11,21 @@
 #include "KThread.h"
 #include "System.h"
 
+ID Thread::classID = 0;
+
 void Thread::start()
 {
-    mKernelThr->start();
+    mPCB->start();
 }
 
 void Thread::waitToComplete()
 {
-    mKernelThr->waitToComplete();
+    mPCB->waitToComplete();
 }
 
 Thread::~Thread()
 {
-    delete mKernelThr;
+    delete mPCB;
 }
 
 void Thread::sleep(Time timeToSleep)
@@ -33,8 +35,15 @@ void Thread::sleep(Time timeToSleep)
 
 Thread::Thread(StackSize stackSize, Time timeSlice)
 {
-    if (stackSize > maxStackSize) stackSize = maxStackSize;
-    mKernelThr = new KernelThr(stackSize, timeSlice, this);
+    mPCB = new PCB(this, stackSize, timeSlice);
+    mID = classID++;
+}
+
+void Thread::wrapper(Thread *running)
+{
+    running->run();
+    // umesto ovoga mora da se zove syscall(threadExit);
+    System::threadExit();
 }
 
 void dispatch()

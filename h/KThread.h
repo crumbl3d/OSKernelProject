@@ -8,41 +8,50 @@
 #ifndef _KTHREAD_H_
 #define _KTHREAD_H_
 
-class Thread;
-class System;
+#include "Thread.h"
 
-struct PCB
-{
-    enum State { New, Ready, Running, Blocked, Terminated };
+typedef void (*pBody)(); // run method type
 
-    unsigned *stack;
-    unsigned ss;
-    unsigned sp;
-    unsigned bp;
-    unsigned quantum;
-    State state;
-};
+const StackSize minStackSize = 128; // min = 128B
+const StackSize maxStackSize = 65535; // max = 64KB
 
-class KernelThr
+class PCB
 {
 public:
-    // stackSize - in BYTE (8b), quantum - in x55ms,
-    // thread - if created by a Thread object
-    KernelThr(unsigned long stackSize, unsigned quantum,
-              Thread *thread = 0);
+    enum State { New, Ready, Running, Blocked, Terminated };
 
-    virtual ~KernelThr();
+    // for creating initial context
+    PCB();
+
+    // thread - if created by a Thread object,
+    // stackSize - in BYTE (8b), quantum - in x55ms
+    PCB(Thread *thread, StackSize stackSize = defaultStackSize,
+        Time timeSlice = defaultTimeSlice);
+
+    // body - method to run
+    PCB(pBody body, StackSize stackSize = defaultStackSize,
+        Time timeSlice = defaultTimeSlice);
+
+    virtual ~PCB();
 
     void start();
     void waitToComplete();
-protected:
+
+    void setTimeSlice(Time timeSlice) { mTimeSlice = timeSlice; }
+private:
     friend class System;
 
-    virtual void run() {}
-private:
-    PCB *mPCB;
+    // Thread Control Block - Thread context
+    unsigned *mStack;
+    unsigned mSS;
+    unsigned mSP;
+    unsigned mBP;
+    unsigned mTimeSlice;
+    State mState;
+
+    // Link to the user thread and next kernel thread
     Thread *mThread;
-    KernelThr *mNext;
+    PCB *mNext;
 };
 
 #endif /* _KTHREAD_H_ */

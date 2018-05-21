@@ -8,12 +8,12 @@
 #ifndef _MACRO_H_
 #define _MACRO_H_
 
-#define softlock() asm cli
-#define softunlock() asm sti
+// #define asmSingleLock() asm cli
+// #define asmSingleUnlock() asm sti
 
-#define lock() asm { pushf; cli; }
-#define unlock() asm popf
+#define asmLock() asm { pushf; cli; }
+#define asmUnlock() asm popf
 
-#define callint(N) asm int N
+#define asmInterrupt(N) asm int N
 
 #endif /* _MACRO_H_ */
