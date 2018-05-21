@@ -19,10 +19,8 @@
 static volatile unsigned tempSEG, tempOFF;
 
 // Call system routine for kernel level processing.
-// TODO: remove printf altogether...
 #define sysCall(DATA) tempSEG = FP_SEG(&DATA); \
 tempOFF = FP_OFF(&DATA); \
-/*printf("seg: %d off %d\n", tempSEG, tempOFF);*/ \
 asm { push cx; push dx; mov cx, tempSEG; mov dx, tempOFF }; \
 asmInterrupt(SysCallEntry); \
 asm { pop dx; pop cx }

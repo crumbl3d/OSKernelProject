@@ -22,8 +22,6 @@ PCB::PCB()
     mBP = mSP = mSS = 0;
     mTimeSlice = defaultTimeSlice;
     mState = New;
-    mStackSize = 0;
-    mBody = 0;
     mThread = 0;
     mNext = 0;
     #ifndef BCC_BLOCK_IGNORE
@@ -51,8 +49,6 @@ PCB::PCB(Thread *thread, StackSize stackSize, Time timeSlice)
     #endif
     mTimeSlice = timeSlice;
     mState = New;
-    mStackSize = stackSize;
-    mBody = 0; // This is irrelevant for this constructor.
     mThread = thread;
     mNext = 0;
     #ifndef BCC_BLOCK_IGNORE
@@ -79,8 +75,6 @@ PCB::PCB(pBody body, StackSize stackSize, Time timeSlice)
     // mStack[stackSize - 12] = BP (base pointer)
     mTimeSlice = timeSlice;
     mState = New;
-    mStackSize = stackSize;
-    mBody = body;
     mThread = 0;
     mNext = 0;
     #ifndef BCC_BLOCK_IGNORE
@@ -109,17 +103,6 @@ void PCB::setTimeSlice(Time timeSlice)
     mTimeSlice = timeSlice;
 }
 
-void PCB::reset()
-{
-    mStack[mStackSize - 1] = 0x200; // PSW
-    #ifndef BCC_BLOCK_IGNORE
-    mStack[mStackSize - 2] = FP_SEG(mBody); // CS
-    mStack[mStackSize - 3] = FP_OFF(mBody); // PC
-    mSS = FP_SEG(mStack + mStackSize - 12);
-    mBP = mSP = FP_OFF(mStack + mStackSize - 12);
-    #endif
-}
-
 void PCB::dispatch()
 {
     #ifndef BCC_BLOCK_IGNORE
@@ -128,7 +111,6 @@ void PCB::dispatch()
     data.objType = ObjectType::Thread;
     data.reqType = ThreadRequestType::Dispatch;
     sysCall(data);
-    asmInterrupt(TimerEntry);
     asmUnlock();
     #endif
 }

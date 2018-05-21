@@ -60,14 +60,23 @@ public:
     static volatile SysCallData *callData;
     // Kernel flags: locked (forbid preemption),
     //               changeContext (requested context change)
-    static volatile unsigned locked, changeContext, restoreUserThread;
+    //               systemChangeContext (requested context change on system call)
+    //               restoreUserThread (restore user thread after system call)
+    static volatile unsigned locked, changeContext, systemChangeContext, restoreUserThread;
     // Counters: tickCount (number of timer ticks passed),
     //           readyThreadCount (number of threads in the scheduler)
     static volatile unsigned tickCount, readyThreadCount;
-    // System threads: initial
-    static volatile PCB *initial, *idle; // initial and idle threads
-    static volatile PCB *running, *runningKernelThread; // current user and kernel threads
-    static volatile PCB *prioritized, *sleeping, *blocked; // prioritized, sleeping and blocked thread queues
+    // System threads: initial (the initial thread that runs main method)
+    //                 idle (when there are no ready threads this thread must run)
+    //                 running (current user thread)
+    //                 runningKernelThread (kernel thread for processing system calls)
+    static volatile PCB *initial, *idle;
+    static volatile PCB *running, *runningKernelThread;
+    // Thread lists: prioritized (contains the prioritized threads which will be run
+    //                            before any thread in the scheduler)
+    //               sleeping (contains the threads that are blocked with the sleep method)
+    //               blocked (contains the threads that are blocked with the waitToComplete method)
+    static volatile PCB *prioritized, *sleeping, *blocked;
 };
 
 #endif /* _SYSTEM_H_ */

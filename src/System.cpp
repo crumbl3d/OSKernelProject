@@ -24,10 +24,12 @@ extern void tick();
 // Initializing System variables.
 pInterrupt System::oldTimerRoutine = 0;
 volatile SysCallData *System::callData = 0;
-volatile unsigned System::locked = 0, System::changeContext = 0, System::restoreUserThread = 0;
+volatile unsigned System::locked = 0, System::changeContext = 0,
+                  System::systemChangeContext, System::restoreUserThread = 0;
 volatile unsigned System::tickCount = 0, System::readyThreadCount = 0;
 volatile PCB *System::initial = new PCB(), *System::idle = new PCB(idleBody, 0, 1);
-volatile PCB *System::running = System::initial, *System::runningKernelThread = new PCB(kernelBody);
+volatile PCB *System::running = System::initial,
+             *System::runningKernelThread = new PCB(kernelBody);
 volatile PCB *System::prioritized = 0, *System::sleeping = 0,
              *System::blocked = 0;
 
@@ -175,31 +177,42 @@ void interrupt System::newTimerRoutine(...)
 
 void interrupt System::sysCallRoutine(...)
 {
-    //printf("System call!!!\n");
     if (restoreUserThread)
     {
+        // We must unlock the context switch here because we
+        // could not have done it in kernelBody because of
+        // the call to this interrupt routine.
         unlock();
-        //printf("Restoring user thread!\n");
-        // We are not saving the context of the kernel thread
-        // because its only purpose is to call system functions.
-        // But we must reset it completely. Therefore we do it here.
-        // TODO: Use while true in kernelthread or semaphore
-        //       take a look at the labs (4/5/2018 - part 2)
-        ((PCB*) runningKernelThread)->reset();
 
-        //printf("Kernel thread: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", runningKernelThread->mSS, runningKernelThread->mSP, runningKernelThread->mBP, runningKernelThread->mTimeSlice);
+        // Saving the context of the kernel thread.
+        #ifndef BCC_BLOCK_IGNORE
+        asm {
+            mov tempBP, bp
+            mov tempSP, sp
+            mov tempSS, ss
+        };
+        #endif
+        
+        runningKernelThread->mSS = tempSS;
+        runningKernelThread->mSP = tempSP;
+        runningKernelThread->mBP = tempBP;
 
-        // AKO JE BILA ZAHTEVANA PROMENA KONTEKSTA (DODAJ
-        // JOS JEDNU GLOBALNU PROMENLJIVU - NE contextChange)
-        // PRVO PROMENITI RUNNING I STAVITI U SCHEDULER
-        // AKO TREBA, PA TEK ONDA VRACATI KONTEKST
+        // If any of the blocking requests are made, we need to
+        // change the user thread context before switching to it.
+        if (systemChangeContext)
+        {
+            if (running->mState != PCB::Terminated) threadPut((PCB*) running);
+            running = threadGet();
+            systemChangeContext = 0;
+        }
+        
+        // This should not ever happen!
+        if (!running) printf("ERROR: running is null!\n");
 
         // Restoring the context of the user thread.
         tempSS = running->mSS;
         tempSP = running->mSP;
         tempBP = running->mBP;
-
-        //printf("User thread: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", tempSS, tempSP, tempBP, running->mTimeSlice);
 
         #ifndef BCC_BLOCK_IGNORE
         asm {
@@ -212,18 +225,16 @@ void interrupt System::sysCallRoutine(...)
     }
     else
     {
+        // Getting the call params.
         #ifndef BCC_BLOCK_IGNORE
         asm {
             mov tempSS, cx
             mov tempSP, dx
         };
-        //printf("seg: %d off %d\n", tempSS, tempSP);
         callData = (SysCallData*) MK_FP(tempSS, tempSP);
         #endif
-
-        //printf("Restoring kernel thread!\n");
     
-        // Saving the context of the current thread.
+        // Saving the context of the user thread.
         #ifndef BCC_BLOCK_IGNORE
         asm {
             mov tempBP, bp
@@ -236,26 +247,10 @@ void interrupt System::sysCallRoutine(...)
         running->mSP = tempSP;
         running->mBP = tempBP;
 
-        //printf("User thread: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", tempSS, tempSP, tempBP, running->mTimeSlice);
-
         // Restoring the context of the kernel thread.
         tempSS = runningKernelThread->mSS;
         tempSP = runningKernelThread->mSP;
         tempBP = runningKernelThread->mBP;
-
-        //printf("Kernel thread: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", tempSS, tempSP, tempBP, runningKernelThread->mTimeSlice);
-
-        //if (kernelBody == runningKernelThread->mBody) printf("Good body!\n");
-        
-        //tempSS = FP_SEG(kernelBody);
-        //tempSP = FP_OFF(kernelBody);
-
-        //printf("kernelBody: SEG = %d OFF = %d\n", tempSS, tempSP);
-
-        //for (tempBP = 1; tempBP <= 20; ++tempBP)
-        //    printf("stack[%d] = %d\n", runningKernelThread->mStackSize - tempBP, runningKernelThread->mStack[runningKernelThread->mStackSize - tempBP]);
-
-        //printf("Checkpoint!\n");
 
         #ifndef BCC_BLOCK_IGNORE
         asm {
@@ -277,42 +272,44 @@ void System::idleBody()
 
 void System::kernelBody()
 {
-    lock();
-    //printf("Running kernel thread!\n");
-    switch (callData->objType)
+    while (1)
     {
-        case ObjectType::Thread:
+        lock();
+        //printf("Running kernel thread!\n");
+        switch (callData->objType)
         {
-            //printf("Thread call!\n");
-            switch (callData->reqType)
+            case ObjectType::Thread:
             {
-                case ThreadRequestType::Dispatch:
+                //printf("Thread call!\n");
+                switch (callData->reqType)
                 {
-                    //printf("Dispatching...\n");
-                    // Set the flag to change the context after
-                    // switching back to the user thread.
-                    changeContext = 1;
-                    break;
+                    case ThreadRequestType::Dispatch:
+                    {
+                        //printf("Dispatching...\n");
+                        // Set the flag to change the current user thread.
+                        systemChangeContext = 1;
+                        break;
+                    }
+                    //default: printf("Default Thread system call!");
                 }
-                //default: printf("Default Thread system call!");
+                break;
             }
-            break;
+            case ObjectType::Semaphore:
+            {
+                //printf("Semaphore call!\n");
+                break;
+            }
+            case ObjectType::Event:
+            {
+                //printf("Event call!\n");
+                break;
+            }
         }
-        case ObjectType::Semaphore:
-        {
-            //printf("Semaphore call!\n");
-            break;
-        }
-        case ObjectType::Event:
-        {
-            //printf("Event call!\n");
-            break;
-        }
+        restoreUserThread = 1;
+        #ifndef BCC_BLOCK_IGNORE
+        asmInterrupt(SysCallEntry);
+        #endif
     }
-    restoreUserThread = 1;
-    #ifndef BCC_BLOCK_IGNORE
-    asmInterrupt(SysCallEntry);
-    #endif
 }
 
 void System::lock()
