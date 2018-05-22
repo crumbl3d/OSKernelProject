@@ -15,6 +15,8 @@ typedef void (*pBody)(); // run method type
 const StackSize minStackSize = 128; // min = 128B
 const StackSize maxStackSize = 65535; // max = 64KB
 
+const unsigned initialObjectCapacity = 100; // initial capacity
+
 class PCB
 {
 public:
@@ -23,13 +25,13 @@ public:
     // for creating initial context
     PCB();
 
-    // thread - if created by a Thread object,
+    // body - method to run
     // stackSize - in BYTE (8b), quantum - in x55ms
-    PCB(Thread *thread, StackSize stackSize = defaultStackSize,
+    PCB(pBody body, StackSize stackSize = defaultStackSize,
         Time timeSlice = defaultTimeSlice);
 
-    // body - method to run
-    PCB(pBody body, StackSize stackSize = defaultStackSize,
+    // thread - user thread this object is created for
+    PCB(Thread *thread, StackSize stackSize = defaultStackSize,
         Time timeSlice = defaultTimeSlice);
 
     virtual ~PCB();
@@ -40,11 +42,14 @@ public:
     void setTimeSlice(Time timeSlice);
 
     static void sleep(unsigned timeToSleep);
-    static void dispatch();
 private:
     friend class System;
 
-    // Thread Control Block - Thread context
+    // Common initialization
+    void initialize(Thread *thread, pBody body,
+                    StackSize stackSize, Time timeSlice);
+
+    // Thread context
     unsigned *mStack;
     unsigned mSS;
     unsigned mSP;
@@ -52,9 +57,19 @@ private:
     unsigned mTimeSlice;
     State mState;
 
-    // Link to the user thread and next kernel thread
+    // System data: mThread (pointer to the user thread),
+    //              mNext (pointer to the next kernel thread)
+    //              mID (unique ID of this kernel thread)
     Thread *mThread;
     PCB *mNext;
+    ID mID;
+    
+    // Class data: classID (ID of the next object of this class)
+    //             capacity (current maximum capacity of the object array)
+    //             objects (array of all the created objects of this class)
+    static ID classID;
+    static unsigned capacity;
+    static PCB **objects;
 };
 
 #endif /* _KTHREAD_H_ */

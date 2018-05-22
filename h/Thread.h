@@ -34,7 +34,6 @@ protected:
 
     virtual void run() {}
 private:
-    static ID classID;
     ID mID;
 
     static void wrapper(Thread *running);

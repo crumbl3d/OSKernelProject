@@ -13,13 +13,13 @@
 #define interrupt
 #endif
 
+#include "Thread.h"
+
 typedef void interrupt (*pInterrupt)(...);
 
 const unsigned TimerEntry = 0x08;
 const unsigned NewTimerEntry = 0x60;
 const unsigned SysCallEntry = 0x61;
-
-class PCB;
 
 struct ObjectType { enum ObjectTypeEnum { Thread, Semaphore, Event }; };
 struct ThreadRequestType { enum ThreadRequestTypeEnum { Create, Destroy, Start, Stop, WaitToComplete, Sleep, Dispatch }; };
@@ -30,7 +30,9 @@ struct SysCallData
 {
     unsigned objType;
     unsigned reqType;
-    // TODO: add data...
+    void *object;
+    StackSize stackSize;
+    Time timeSlice;
 };
 
 class System
@@ -45,6 +47,7 @@ public:
 
     static void threadStop();
 
+    static void* getCallResult();
 //private:
     static void interrupt newTimerRoutine(...);
     static void interrupt sysCallRoutine(...);
@@ -56,8 +59,9 @@ public:
     static void unlock();
 
     static pInterrupt oldTimerRoutine;
-    // Global system call data.
+    // Global system call data and result.
     static volatile SysCallData *callData;
+    static volatile void *callResult;
     // Kernel flags: locked (forbid preemption),
     //               changeContext (requested context change)
     //               systemChangeContext (requested context change on system call)

@@ -24,6 +24,7 @@ extern void tick();
 // Initializing System variables.
 pInterrupt System::oldTimerRoutine = 0;
 volatile SysCallData *System::callData = 0;
+volatile void *System::callResult = 0;
 volatile unsigned System::locked = 0, System::changeContext = 0,
                   System::systemChangeContext, System::restoreUserThread = 0;
 volatile unsigned System::tickCount = 0, System::readyThreadCount = 0;
@@ -49,8 +50,11 @@ void System::initialize()
     asmUnlock();
     #endif
 
-    ((PCB*) initial)->setTimeSlice(20);
-    ((PCB*) runningKernelThread)->setTimeSlice(0);
+    initial->mState = PCB::Running;
+    initial->mTimeSlice = 20; // remove this as time goes on
+    idle->mState = PCB::Ready;
+    runningKernelThread->mState = PCB::Ready;
+    //runningKernelThread->mTimeSlice = 0; // probably not needed since locked is 1
     tickCount = running->mTimeSlice;
 }
 
@@ -68,13 +72,6 @@ void System::finalize()
     delete runningKernelThread;
 }
 
-void System::threadStop()
-{
-    if (!running) return; // Exception, no running thread!
-    running->mState = PCB::Terminated;
-    PCB::dispatch();
-}
-
 void System::threadPut(PCB *thread)
 {
     #ifndef BCC_BLOCK_IGNORE
@@ -85,6 +82,7 @@ void System::threadPut(PCB *thread)
     {
         //printf("Put: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
         readyThreadCount++;
+        thread->mState = PCB::Ready;
         Scheduler::put(thread);
     }
     else printf("ERROR: idle thread\n");
@@ -111,8 +109,21 @@ PCB* System::threadGet()
         thread = (PCB*) idle;
         printf("Idle thread!\n");
     }
+    thread->mState = PCB::Running;
     //printf("Get: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
     return thread;
+}
+
+void System::threadStop()
+{
+    if (!running) return; // Exception, no running thread!
+    running->mState = PCB::Terminated;
+    dispatch();
+}
+
+void* System::getCallResult()
+{
+    return (void*) callResult;
 }
 
 void interrupt System::newTimerRoutine(...)
@@ -279,9 +290,16 @@ void System::kernelBody()
         {
             case ObjectType::Thread:
             {
+                Thread *thread = (Thread*) callData->object;
                 //printf("Thread call!\n");
                 switch (callData->reqType)
                 {
+                    case ThreadRequestType::Create:
+                    {
+                        PCB *temp = new PCB(thread, callData->stackSize, callData->timeSlice);
+                        callResult = &(temp->mID);
+                        break;
+                    }
                     case ThreadRequestType::Dispatch:
                     {
                         //printf("Dispatching...\n");

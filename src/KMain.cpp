@@ -7,6 +7,7 @@
 
 #include <dos.h>
 #include <stdio.h>
+#include <iostream.h>
 
 #include "Macro.h"
 #include "System.h"
@@ -20,9 +21,11 @@ void runA()
     for (int i = 0; i < 30; ++i)
     {
         System::lock();
-        printf("Thread A! i = %d\n", i);
+        cout << "u a() i = " << i << endl;
         System::unlock();
-        if (System::changeContext) dispatch();
+        #ifndef BCC_BLOCK_IGNORE
+        if (System::changeContext) asmInterrupt(TimerEntry);
+        #endif
         for (int j = 0; j < 10000; ++j)
             for (int k = 0; k < 30000; ++k);
     }
@@ -34,9 +37,11 @@ void runB()
     for (int i = 0; i < 30; ++i)
     {
         System::lock();
-        printf("Thread B! i = %d\n", i);
+        cout << "u b() i = " << i << endl;
         System::unlock();
-        if (System::changeContext) dispatch();
+        #ifndef BCC_BLOCK_IGNORE
+        if (System::changeContext) asmInterrupt(TimerEntry);
+        #endif
         for (int j = 0; j < 10000; ++j)
             for (int k = 0; k < 30000; ++k);
     }
@@ -55,7 +60,7 @@ int userMain(int argc, char* argv[])
     {
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
-        printf("main %d\n", i);
+        cout << "main " << i << endl;
         asmUnlock();
         #endif
 

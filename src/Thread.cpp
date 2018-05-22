@@ -5,14 +5,13 @@
  *     Author: Jovan Nikolov 2016/0040
  */
 
+#include <dos.h>
 #include <stdio.h>
 
 #include "Macro.h"
 #include "Thread.h"
 #include "KThread.h"
 #include "System.h"
-
-ID Thread::classID = 0;
 
 void Thread::start()
 {
@@ -36,8 +35,15 @@ void Thread::sleep(Time timeToSleep)
 
 Thread::Thread(StackSize stackSize, Time timeSlice)
 {
-    mPCB = new PCB(this, stackSize, timeSlice);
-    mID = classID++;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    SysCallData data;
+    data.objType = ObjectType::Thread;
+    data.reqType = ThreadRequestType::Create;
+    sysCall(data);
+    mID = (ID) System::getCallResult();
+    asmUnlock();
+    #endif
 }
 
 void Thread::wrapper(Thread *running)
@@ -49,5 +55,12 @@ void Thread::wrapper(Thread *running)
 
 void dispatch()
 {
-    PCB::dispatch();
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    SysCallData data;
+    data.objType = ObjectType::Thread;
+    data.reqType = ThreadRequestType::Dispatch;
+    sysCall(data);
+    asmUnlock();
+    #endif
 }
