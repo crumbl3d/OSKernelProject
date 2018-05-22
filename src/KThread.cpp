@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h> // TEMPORARY
+#include <stdlib.h>
 #include <mem.h>
 #include <dos.h>
 
@@ -15,7 +16,7 @@
 #include "System.h"
 
 unsigned PCB::capacity = initialObjectCapacity, PCB::count = 0;
-PCB** PCB::objects = new PCB*[PCB::capacity];
+PCB** PCB::objects = 0;
 
 PCB::PCB()
 {
@@ -120,18 +121,31 @@ void PCB::initialize(PCB *kernelThread, Thread *userThread, pBody body,
     kernelThread->mID = count++;
     if (count > capacity) 
     {
-        // printf("resizing\n");
-        PCB **temp = new PCB*[2 * capacity];
-        memcpy(temp, objects, capacity * sizeof(PCB*));
-        delete objects;
-        objects = temp;
-        capacity *= 2;
+        //printf("resizing\n");
+        PCB **temp = (PCB**) calloc(capacity << 1, sizeof(PCB*));
+        if (objects)
+        {
+            memcpy(temp, objects, capacity * sizeof(PCB*));
+            free(objects);
+        }
+        if (temp)
+        {
+            objects = temp;
+            capacity <<= 1;
+        }
+        else printf("Failed to resize thread object array!\n");
     }
-    objects[kernelThread->mID] = kernelThread;
+    if (objects)
+    {
+        objects[kernelThread->mID] = kernelThread;
+        // DEBUG ONLY!!! REMOVE!!!
+        // #ifndef BCC_BLOCK_IGNORE
+        // for (unsigned i = 0; i < count; ++i)
+        //     printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
+        // #endif
+    }
+    else printf("Invalid thread object array!\n");
     #ifndef BCC_BLOCK_IGNORE
-    // // DEBUG ONLY!!! REMOVE!!!
-    // for (unsigned i = 0; i < count; ++i)
-    //     printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
     asmUnlock();
     #endif
 }

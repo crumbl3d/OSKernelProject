@@ -11,7 +11,6 @@
 
 #include "Macro.h"
 #include "System.h"
-#include "KThread.h"
 #include "Thread.h"
 
 // extern int userMain(int argc, char* argv[]);

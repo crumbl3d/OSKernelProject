@@ -7,6 +7,7 @@
 
 #include <dos.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "Schedule.h"
 
@@ -28,9 +29,8 @@ volatile void *System::callResult = 0;
 volatile unsigned System::locked = 0, System::changeContext = 0,
                   System::systemChangeContext = 0, System::restoreUserThread = 0,
                   System::tickCount = 0, System::readyThreadCount = 0;
-volatile PCB *System::idle = new PCB(idleBody, 0, 1),
-             *System::running = new PCB(),
-             *System::runningKernelThread = new PCB(kernelBody);
+volatile PCB *System::idle = 0, *System::running = 0,
+             *System::runningKernelThread = 0;
 volatile PCB *System::prioritized = 0, *System::sleeping = 0;
 
 // Temporary variables for context change.
@@ -38,8 +38,7 @@ volatile unsigned tempBP, tempSP, tempSS;
 
 void System::initialize()
 {
-    // Modifying timer IVT entry and initializing
-    // sysCall IVT entry.
+    // Modifying timer IVT entry and initializing sysCall IVT entry.
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     oldTimerRoutine = getvect(TimerEntry);
@@ -49,10 +48,19 @@ void System::initialize()
     asmUnlock();
     #endif
 
+    // Initializing object arrays.
+    PCB::objects = (PCB**) calloc(PCB::capacity, sizeof(PCB*));
+
+    // Initializing internal kernel threads.
+    idle = new PCB(idleBody, 0, 1);
     idle->mState = ThreadState::Ready;
+    running = new PCB();
     running->mState = ThreadState::Running;
     running->mTimeSlice = 20; // remove this as time goes on
+    runningKernelThread = new PCB(kernelBody);
     runningKernelThread->mState = ThreadState::Running;
+
+    // Initializing system variables.
     tickCount = running->mTimeSlice;
 }
 
@@ -64,10 +72,14 @@ void System::finalize()
     setvect(TimerEntry, oldTimerRoutine);
     asmUnlock();
     #endif
+
+    // Disposing the object arrays.
+    free(PCB::objects); PCB::objects = 0;
+
     // Disposing of the dynamically created objects.
-    delete idle;
-    delete running;
-    delete runningKernelThread;
+    delete idle; idle = 0;
+    delete running; running = 0;
+    delete runningKernelThread; runningKernelThread = 0;
 }
 
 void System::threadPut(PCB *thread)
@@ -160,9 +172,6 @@ void interrupt System::newTimerRoutine(...)
         // Getting the next thread.
         if (running->mState != ThreadState::Terminated) threadPut((PCB*) running);
         running = threadGet();
-        
-        // This should not ever happen!
-        if (!running) printf("ERROR: running is null!\n");
 
         // Restoring the context of the next thread.
         tempSS = running->mSS;
@@ -186,9 +195,7 @@ void interrupt System::sysCallRoutine(...)
 {
     if (restoreUserThread)
     {
-        // We must unlock the context switch here because we
-        // could not have done it in kernelBody because of
-        // the call to this interrupt routine.
+        // Interrupts are now blocked, so it is safe to allow preemption.
         unlock();
 
         // Saving the context of the kernel thread.
@@ -204,8 +211,8 @@ void interrupt System::sysCallRoutine(...)
         runningKernelThread->mSP = tempSP;
         runningKernelThread->mBP = tempBP;
 
-        // If any of the blocking requests are made, we need to
-        // change the user thread context before switching to it.
+        // If any of the blocking requests are made, we need to change
+        // the user thread context before switching to it.
         if (systemChangeContext)
         {
             if (running->mState != ThreadState::Terminated) threadPut((PCB*) running);
@@ -213,9 +220,6 @@ void interrupt System::sysCallRoutine(...)
             tickCount = running->mTimeSlice;
             systemChangeContext = 0;
         }
-        
-        // This should not ever happen!
-        if (!running) printf("ERROR: running is null!\n");
 
         // Restoring the context of the user thread.
         tempSS = running->mSS;
@@ -282,6 +286,7 @@ void System::kernelBody()
 {
     while (1)
     {
+        // Interrupts are allowed, but preemption must be blocked!
         lock();
         //printf("Running kernel thread!\n");
         switch (callData->reqType)
@@ -298,22 +303,28 @@ void System::kernelBody()
         {
             //printf("Destroying the thread!\n");
             PCB *temp = PCB::getAt((ID) callData->object);
-            delete temp;
+            if (temp == 0) printf("Invalid thread ID!\n");
+            else delete temp;
             break;
         }
         case RequestType::TStart:
         {
             //printf("Starting the thread!\n");
             PCB *temp = PCB::getAt((ID) callData->object);
-            temp->start();
+            if (temp == 0) printf("Invalid thread ID!\n");
+            else temp->start();
             break;
         }
         case RequestType::TStop:
         {
             //printf("Stopping the thread!\n");
             PCB *temp = PCB::getAt((ID) callData->object);
-            temp->mState = ThreadState::Terminated;
-            systemChangeContext = 1;
+            if (temp == 0) printf("Invalid thread ID!\n");
+            else
+            {
+                temp->mState = ThreadState::Terminated;
+                systemChangeContext = 1;
+            }
             break;
         }
         case RequestType::TWaitToComplete:
