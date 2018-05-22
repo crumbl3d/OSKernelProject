@@ -155,6 +155,9 @@ else
 	@echo You must build the project first before debugging it!
 endif
 
+bnr: $(TARGET)
+	@make run
+
 debuginfo:
 	$(info PROJECTDIR is $(PROJECTDIR))
 	$(info SRCDIR is $(SRCDIR))
@@ -217,4 +220,4 @@ debuginfo:
 	$(info )
 	$(info $(foreach d,$(SRC),$(call generate-rules,$d)))
 
-.PHONY: prep asm compile all @cleanprep cleanprep @cleanasm cleanasm @cleanobj cleanobj @clean clean run debug debuginfo
+.PHONY: prep asm compile all @cleanprep cleanprep @cleanasm cleanasm @cleanobj cleanobj @clean clean run debug bnr debuginfo

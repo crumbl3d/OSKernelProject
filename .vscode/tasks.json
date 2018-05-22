@@ -82,7 +82,7 @@
         {
             "label": "Build and Run",
             "type": "shell",
-            "command": "cd ${workspaceFolder}\\make & make all & make run",
+            "command": "cd ${workspaceFolder}\\make & make bnr",
             "group": {
                 "kind": "test",
                 "isDefault": true

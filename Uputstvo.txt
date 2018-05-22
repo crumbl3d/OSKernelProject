@@ -52,6 +52,10 @@ PS: Ovim bih da se zahvalim Konstantinu Djordjevicu na velikoj pomoci u realizac
 
 Verzije:
 
+1.2.1 (23-05-2018):
+    Ispravka Build and Run task-a. Naime, ukoliko je postojala stara verzija projekta,
+    a nova verzija se nije uspesno kompajlirala, task je pokretao staru verziju, sto
+    je neispravna funkcionalnost. Problem je ovom verzijom ispravljen.
 1.2 (15-05-2018):
     Pokusaj zaobilaska problema sa linkerom. Linker ne parsira komandu ako je duza od
     127 karaktera. Stoga se ne izvrsava ukoliko ima vise fajlova u projektu.
