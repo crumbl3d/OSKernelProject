@@ -73,13 +73,13 @@ void System::finalize()
     asmUnlock();
     #endif
 
-    // Disposing the object arrays.
-    free(PCB::objects); PCB::objects = 0;
-
     // Disposing of the dynamically created objects.
     delete idle; idle = 0;
     delete running; running = 0;
     delete runningKernelThread; runningKernelThread = 0;
+    
+    // Disposing of the object arrays.
+    free(PCB::objects); PCB::objects = 0;
 }
 
 void System::threadPut(PCB *thread)

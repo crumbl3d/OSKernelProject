@@ -38,6 +38,12 @@ PCB::~PCB()
     // Only delete the stack if it was created.
     if (mStack) delete [] mStack;
     objects[mID] = 0;
+    // printf("ID to delete: %d\n", mID);
+    // #ifndef BCC_BLOCK_IGNORE
+    // if (objects)
+    //     for (unsigned i = 0; i < count; ++i)
+    //         printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
+    // #endif
 }
 
 void PCB::start()
