@@ -16,57 +16,55 @@
 
 // extern int userMain(int argc, char* argv[]);
 
-void runA()
+class TestThread : public Thread
 {
-    for (int i = 0; i < 30; ++i)
+public:
+    TestThread(char charToPrint, Time timeSlice) :
+        Thread(defaultStackSize, timeSlice), mChar(charToPrint) {}
+    virtual ~TestThread() { waitToComplete(); }
+protected:
+    virtual void run()
     {
+        for (int i = 0; i < 30; ++i)
+        {
+            System::lock();
+            cout << "Thread " << mChar << " i = " << i << endl;
+            System::unlock();
+            for (int j = 0; j < 10000; ++j)
+                for (int k = 0; k < 30000; ++k);
+        }
         System::lock();
-        cout << "u a() i = " << i << endl;
+        cout << "Thread " << mChar << " done!" << endl;
         System::unlock();
-        #ifndef BCC_BLOCK_IGNORE
-        if (System::changeContext) asmInterrupt(TimerEntry);
-        #endif
-        for (int j = 0; j < 10000; ++j)
-            for (int k = 0; k < 30000; ++k);
+        System::threadStop();
     }
-    System::threadStop();
-}
-
-void runB()
-{
-    for (int i = 0; i < 30; ++i)
-    {
-        System::lock();
-        cout << "u b() i = " << i << endl;
-        System::unlock();
-        #ifndef BCC_BLOCK_IGNORE
-        if (System::changeContext) asmInterrupt(TimerEntry);
-        #endif
-        for (int j = 0; j < 10000; ++j)
-            for (int k = 0; k < 30000; ++k);
-    }
-    System::threadStop();
-}
+private:
+    char mChar;
+};
 
 int userMain(int argc, char* argv[])
 {
-    PCB thrA(runA), thrB(runB);
-    thrA.setTimeSlice(40);
-    thrB.setTimeSlice(20);
-    thrA.start();
-    thrB.start();
+    TestThread t1('A', 40), t2('B', 20);
+    t1.start();
+    t2.start();
 
     for (int i = 0; i < 30; ++i)
     {
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
-        cout << "main " << i << endl;
+        cout << "User main i = " << i << endl;
         asmUnlock();
         #endif
 
         for (int j = 0; j < 30000; ++j)
             for (int k = 0; k < 30000; ++k);
     }
+    
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    cout << "User main done!" << endl;
+    asmUnlock();
+    #endif
 
     return 0;
 }

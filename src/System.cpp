@@ -26,13 +26,12 @@ pInterrupt System::oldTimerRoutine = 0;
 volatile SysCallData *System::callData = 0;
 volatile void *System::callResult = 0;
 volatile unsigned System::locked = 0, System::changeContext = 0,
-                  System::systemChangeContext, System::restoreUserThread = 0;
-volatile unsigned System::tickCount = 0, System::readyThreadCount = 0;
-volatile PCB *System::initial = new PCB(), *System::idle = new PCB(idleBody, 0, 1);
-volatile PCB *System::running = System::initial,
+                  System::systemChangeContext = 0, System::restoreUserThread = 0,
+                  System::tickCount = 0, System::readyThreadCount = 0;
+volatile PCB *System::idle = new PCB(idleBody, 0, 1),
+             *System::running = new PCB(),
              *System::runningKernelThread = new PCB(kernelBody);
-volatile PCB *System::prioritized = 0, *System::sleeping = 0,
-             *System::blocked = 0;
+volatile PCB *System::prioritized = 0, *System::sleeping = 0;
 
 // Temporary variables for context change.
 volatile unsigned tempBP, tempSP, tempSS;
@@ -50,11 +49,10 @@ void System::initialize()
     asmUnlock();
     #endif
 
-    initial->mState = PCB::Running;
-    initial->mTimeSlice = 20; // remove this as time goes on
-    idle->mState = PCB::Ready;
-    runningKernelThread->mState = PCB::Ready;
-    //runningKernelThread->mTimeSlice = 0; // probably not needed since locked is 1
+    idle->mState = ThreadState::Ready;
+    running->mState = ThreadState::Running;
+    running->mTimeSlice = 20; // remove this as time goes on
+    runningKernelThread->mState = ThreadState::Running;
     tickCount = running->mTimeSlice;
 }
 
@@ -66,9 +64,9 @@ void System::finalize()
     setvect(TimerEntry, oldTimerRoutine);
     asmUnlock();
     #endif
-    // todo dispose all the stuff...
-    delete initial;
+    // Disposing of the dynamically created objects.
     delete idle;
+    delete running;
     delete runningKernelThread;
 }
 
@@ -82,7 +80,7 @@ void System::threadPut(PCB *thread)
     {
         //printf("Put: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
         readyThreadCount++;
-        thread->mState = PCB::Ready;
+        thread->mState = ThreadState::Ready;
         Scheduler::put(thread);
     }
     else printf("ERROR: idle thread\n");
@@ -109,7 +107,7 @@ PCB* System::threadGet()
         thread = (PCB*) idle;
         printf("Idle thread!\n");
     }
-    thread->mState = PCB::Running;
+    thread->mState = ThreadState::Running;
     //printf("Get: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
     return thread;
 }
@@ -117,7 +115,7 @@ PCB* System::threadGet()
 void System::threadStop()
 {
     if (!running) return; // Exception, no running thread!
-    running->mState = PCB::Terminated;
+    running->mState = ThreadState::Terminated;
     dispatch();
 }
 
@@ -144,7 +142,7 @@ void interrupt System::newTimerRoutine(...)
     // and there is at least one Ready thread or the running thread
     // is Terminated (we need to switch to the idle thread).
     if (changeContext && !locked && (readyThreadCount > 0 || 
-        running->mState == PCB::Terminated))
+        running->mState == ThreadState::Terminated))
     {
         // Saving the context of the running thread.
         #ifndef BCC_BLOCK_IGNORE
@@ -160,7 +158,7 @@ void interrupt System::newTimerRoutine(...)
         running->mBP = tempBP;
 
         // Getting the next thread.
-        if (running->mState != PCB::Terminated) threadPut((PCB*) running);
+        if (running->mState != ThreadState::Terminated) threadPut((PCB*) running);
         running = threadGet();
         
         // This should not ever happen!
@@ -210,7 +208,7 @@ void interrupt System::sysCallRoutine(...)
         // change the user thread context before switching to it.
         if (systemChangeContext)
         {
-            if (running->mState != PCB::Terminated) threadPut((PCB*) running);
+            if (running->mState != ThreadState::Terminated) threadPut((PCB*) running);
             running = threadGet();
             tickCount = running->mTimeSlice;
             systemChangeContext = 0;
@@ -277,7 +275,7 @@ void interrupt System::sysCallRoutine(...)
 void System::idleBody()
 {
     // Using readyThreadCount to prevent the host OS from killing the process.
-    while (!readyThreadCount);
+    while (1) while (!readyThreadCount);
 }
 
 void System::kernelBody()
@@ -286,41 +284,99 @@ void System::kernelBody()
     {
         lock();
         //printf("Running kernel thread!\n");
-        switch (callData->objType)
+        switch (callData->reqType)
         {
-            case ObjectType::Thread:
-            {
-                Thread *thread = (Thread*) callData->object;
-                //printf("Thread call!\n");
-                switch (callData->reqType)
-                {
-                    case ThreadRequestType::Create:
-                    {
-                        PCB *temp = new PCB(thread, callData->stackSize, callData->timeSlice);
-                        callResult = &(temp->mID);
-                        break;
-                    }
-                    case ThreadRequestType::Dispatch:
-                    {
-                        //printf("Dispatching...\n");
-                        // Set the flag to change the current user thread.
-                        systemChangeContext = 1;
-                        break;
-                    }
-                    //default: printf("Default Thread system call!");
-                }
-                break;
-            }
-            case ObjectType::Semaphore:
-            {
-                //printf("Semaphore call!\n");
-                break;
-            }
-            case ObjectType::Event:
-            {
-                //printf("Event call!\n");
-                break;
-            }
+        // Thread specific requests
+        case RequestType::TCreate:
+        {
+            //printf("Creating a new thread!\n");
+            PCB *temp = new PCB((Thread*) callData->object, callData->size, callData->time);
+            callResult = (volatile void*) temp->mID;
+            break;
+        }
+        case RequestType::TDestroy:
+        {
+            //printf("Destroying the thread!\n");
+            PCB *temp = PCB::getAt((ID) callData->object);
+            delete temp;
+            break;
+        }
+        case RequestType::TStart:
+        {
+            //printf("Starting the thread!\n");
+            PCB *temp = PCB::getAt((ID) callData->object);
+            temp->start();
+            break;
+        }
+        case RequestType::TStop:
+        {
+            //printf("Stopping the thread!\n");
+            PCB *temp = PCB::getAt((ID) callData->object);
+            temp->mState = ThreadState::Terminated;
+            systemChangeContext = 1;
+            break;
+        }
+        case RequestType::TWaitToComplete:
+        {
+            //printf("Blocking the thread on another thread!\n");
+            //systemChangeContext = 1;
+            break;
+        }
+        case RequestType::TSleep:
+        {
+            //printf("Putting the thread to sleep!\n");
+            //systemChangeContext = 1;
+            break;
+        }
+        case RequestType::TDispatch:
+        {
+            //printf("Dispatching!\n");
+            systemChangeContext = 1;
+            break;
+        }
+        // Semaphore specific requests
+        case RequestType::SCreate:
+        {
+            //printf("Creating a new semaphore!\n");
+            break;
+        }
+        case RequestType::SDestroy:
+        {
+            //printf("Destroying the semaphore!\n");
+            break;
+        }
+        case RequestType::SWait:
+        {
+            //printf("Waiting on the semaphore!\n");
+            break;
+        }
+        case RequestType::SSignal:
+        {
+            //printf("Signaling the semaphore!\n");
+            break;
+        }
+        // Event specific requests
+        case RequestType::ECreate:
+        {
+            //printf("Creating a new semaphore!\n");
+            break;
+        }
+        case RequestType::EDestroy:
+        {
+            //printf("Destroying the semaphore!\n");
+            break;
+        }
+        case RequestType::EWait:
+        {
+            //printf("Waiting on the semaphore!\n");
+            break;
+        }
+        case RequestType::ESignal:
+        {
+            //printf("Signaling the semaphore!\n");
+            break;
+        }
+        default: printf("Invalid system call request type!\n");
         }
         restoreUserThread = 1;
         #ifndef BCC_BLOCK_IGNORE

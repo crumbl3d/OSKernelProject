@@ -37,9 +37,6 @@ private:
     ID mID;
 
     static void wrapper(Thread *running);
-
-    // remove when syscall is done
-    PCB* mPCB;
 };
 
 void dispatch();

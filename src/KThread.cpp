@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h> // TEMPORARY
+#include <mem.h>
 #include <dos.h>
 
 #include "Macro.h"
@@ -13,37 +14,37 @@
 #include "Thread.h"
 #include "System.h"
 
-ID PCB::classID = 0;
-unsigned PCB::capacity = initialObjectCapacity;
+unsigned PCB::capacity = initialObjectCapacity, PCB::count = 0;
 PCB** PCB::objects = new PCB*[PCB::capacity];
 
 PCB::PCB()
 {
-    initialize(0, 0, 0, defaultTimeSlice);
+    initialize(this, 0, 0, 0, defaultTimeSlice);
 }
 
 PCB::PCB(pBody body, StackSize stackSize, Time timeSlice)
 {
-    initialize(0, body, stackSize, timeSlice);
+    initialize(this, 0, body, stackSize, timeSlice);
 }
 
 PCB::PCB(Thread *thread, StackSize stackSize, Time timeSlice)
 {
-    initialize(thread, 0, stackSize, timeSlice);
+    initialize(this, thread, 0, stackSize, timeSlice);
 }
 
 PCB::~PCB()
 {
-    delete [] mStack;
+    // Only delete the stack if it was created.
+    if (mStack) delete [] mStack;
+    objects[mID] = 0;
 }
 
 void PCB::start()
 {
-    // If the thread is already in the
-    // scheduler, do not put it again!
-    if (mState == New)
+    // If the thread is already in the scheduler, do not put it again!
+    if (mState == ThreadState::New)
     {
-        mState = Ready;
+        mState = ThreadState::Ready;
         System::threadPut(this);
     }
 }
@@ -63,55 +64,74 @@ void PCB::sleep(unsigned timeToSleep)
     printf("Time to sleep: %d\n", timeToSleep);
 }
 
-void PCB::initialize(Thread *thread, pBody body,
+PCB* PCB::getAt(unsigned index)
+{
+    if (index < count) return objects[index];
+    else return 0;
+}
+
+void PCB::initialize(PCB *kernelThread, Thread *userThread, pBody body,
                      StackSize stackSize, Time timeSlice)
 {
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     #endif
-    if (thread && body)
+    if (userThread && body)
     {
         // No body, just initialize the private members.
-        mStack = 0;
-        mBP = mSP = mSS = 0;
+        kernelThread->mStack = 0;
+        kernelThread->mBP = kernelThread->mSP = kernelThread->mSS = 0;
     }
     else
     {
         if (stackSize < minStackSize) stackSize = minStackSize;
         if (stackSize > maxStackSize) stackSize = maxStackSize;
         stackSize /= sizeof(unsigned); // BYTE to WORD
-        mStack = new unsigned[stackSize];
+        kernelThread->mStack = new unsigned[stackSize];
         if (body)
         {
             // Has body, but no user thread.
-            mStack[stackSize - 1] = 0x200; // PSW
+            kernelThread->mStack[stackSize - 1] = 0x200; // PSW
             #ifndef BCC_BLOCK_IGNORE
-            mStack[stackSize - 2] = FP_SEG(body); // CS
-            mStack[stackSize - 3] = FP_OFF(body); // PC
-            mSS = FP_SEG(mStack + stackSize - 12); // BP
-            mBP = mSP = FP_OFF(mStack + stackSize - 12); // BP
+            kernelThread->mStack[stackSize - 2] = FP_SEG(body); // CS
+            kernelThread->mStack[stackSize - 3] = FP_OFF(body); // PC
+            kernelThread->mSS = FP_SEG(kernelThread->mStack + stackSize - 12); // BP
+            kernelThread->mBP = kernelThread->mSP = FP_OFF(kernelThread->mStack + stackSize - 12); // BP
             #endif
         }
         else
         {
             // Has user thread - implicit body.
-            mStack[stackSize - 5] = 0x200; // PSW
+            kernelThread->mStack[stackSize - 5] = 0x200; // PSW
             #ifndef BCC_BLOCK_IGNORE
-            mStack[stackSize - 1] = FP_SEG(thread); // wrapper() param
-            mStack[stackSize - 2] = FP_OFF(thread); // wrapper() param
-            mStack[stackSize - 6] = FP_SEG(Thread::wrapper); // CS
-            mStack[stackSize - 7] = FP_OFF(Thread::wrapper); // PC
-            mSP = mBP = FP_OFF(mStack + stackSize - 12); // BP
-            mSS = FP_SEG(mStack + stackSize - 12); // BP
+            kernelThread->mStack[stackSize - 1] = FP_SEG(userThread); // wrapper() param
+            kernelThread->mStack[stackSize - 2] = FP_OFF(userThread); // wrapper() param
+            kernelThread->mStack[stackSize - 6] = FP_SEG(Thread::wrapper); // CS
+            kernelThread->mStack[stackSize - 7] = FP_OFF(Thread::wrapper); // PC
+            kernelThread->mSP = kernelThread->mBP = FP_OFF(kernelThread->mStack + stackSize - 16); // BP
+            kernelThread->mSS = FP_SEG(kernelThread->mStack + stackSize - 16); // BP
             #endif
         }
     }
-    mTimeSlice = timeSlice;
-    mState = New;
-    mThread = thread;
-    mNext = 0;
-    mID = classID++;
+    kernelThread->mTimeSlice = timeSlice;
+    kernelThread->mState = ThreadState::New;
+    kernelThread->mThread = userThread;
+    kernelThread->mNext = 0;
+    kernelThread->mID = count++;
+    if (count > capacity) 
+    {
+        // printf("resizing\n");
+        PCB **temp = new PCB*[2 * capacity];
+        memcpy(temp, objects, capacity * sizeof(PCB*));
+        delete objects;
+        objects = temp;
+        capacity *= 2;
+    }
+    objects[kernelThread->mID] = kernelThread;
     #ifndef BCC_BLOCK_IGNORE
+    // // DEBUG ONLY!!! REMOVE!!!
+    // for (unsigned i = 0; i < count; ++i)
+    //     printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
     asmUnlock();
     #endif
 }

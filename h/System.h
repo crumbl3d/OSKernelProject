@@ -21,18 +21,37 @@ const unsigned TimerEntry = 0x08;
 const unsigned NewTimerEntry = 0x60;
 const unsigned SysCallEntry = 0x61;
 
-struct ObjectType { enum ObjectTypeEnum { Thread, Semaphore, Event }; };
-struct ThreadRequestType { enum ThreadRequestTypeEnum { Create, Destroy, Start, Stop, WaitToComplete, Sleep, Dispatch }; };
-struct SemaphoreRequestType { enum SemaphoreRequestTypeEnum { Create, Destroy, Wait, Signal }; };
-struct EventRequestType { enum EventRequestTypeEnum { Create, Destroy, Wait, Signal }; };
+struct RequestType
+{
+    enum RequestTypeEnum
+    {
+        // Thread specific requests
+        TCreate         = 0x00,
+        TDestroy        = 0x01,
+        TStart          = 0x02,
+        TStop           = 0x03,
+        TWaitToComplete = 0x04,
+        TSleep          = 0x05,
+        TDispatch       = 0x06,
+        // Semaphore specific requests
+        SCreate         = 0x10,
+        SDestroy        = 0x11,
+        SWait           = 0x12,
+        SSignal         = 0x13,
+        // Event specific requests
+        ECreate         = 0x20,
+        EDestroy        = 0x21,
+        EWait           = 0x22,
+        ESignal         = 0x23
+    };
+};
 
 struct SysCallData
 {
-    unsigned objType;
     unsigned reqType;
     void *object;
-    StackSize stackSize;
-    Time timeSlice;
+    StackSize size;
+    Time time;
 };
 
 class System
@@ -45,6 +64,7 @@ public:
     static void threadPriorityPut(PCB *thread);
     static PCB* threadGet();
 
+    // todo: remove this and put inside wrapper in Thread.h
     static void threadStop();
 
     static void* getCallResult();
@@ -70,17 +90,14 @@ public:
     // Counters: tickCount (number of timer ticks passed),
     //           readyThreadCount (number of threads in the scheduler)
     static volatile unsigned tickCount, readyThreadCount;
-    // System threads: initial (the initial thread that runs main method)
-    //                 idle (when there are no ready threads this thread must run)
+    // System threads: idle (when there are no ready threads this thread must run)
     //                 running (current user thread)
     //                 runningKernelThread (kernel thread for processing system calls)
-    static volatile PCB *initial, *idle;
-    static volatile PCB *running, *runningKernelThread;
+    static volatile PCB *idle, *running, *runningKernelThread;
     // Thread lists: prioritized (contains the prioritized threads which will be run
     //                            before any thread in the scheduler)
     //               sleeping (contains the threads that are blocked with the sleep method)
-    //               blocked (contains the threads that are blocked with the waitToComplete method)
-    static volatile PCB *prioritized, *sleeping, *blocked;
+    static volatile PCB *prioritized, *sleeping;
 };
 
 #endif /* _SYSTEM_H_ */

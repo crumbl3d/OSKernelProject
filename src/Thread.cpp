@@ -15,22 +15,50 @@
 
 void Thread::start()
 {
-    mPCB->start();
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    SysCallData data;
+    data.reqType = RequestType::TStart;
+    data.object = (void*) mID;
+    sysCall(data);
+    asmUnlock();
+    #endif
 }
 
 void Thread::waitToComplete()
 {
-    mPCB->waitToComplete();
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    SysCallData data;
+    data.reqType = RequestType::TWaitToComplete;
+    data.object = (void*) mID;
+    sysCall(data);
+    asmUnlock();
+    #endif
 }
 
 Thread::~Thread()
 {
-    delete mPCB;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    SysCallData data;
+    data.reqType = RequestType::TDestroy;
+    data.object = (void*) mID;
+    sysCall(data);
+    asmUnlock();
+    #endif
 }
 
 void Thread::sleep(Time timeToSleep)
 {
-    PCB::sleep(timeToSleep);
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    SysCallData data;
+    data.reqType = RequestType::TSleep;
+    data.time = timeToSleep;
+    sysCall(data);
+    asmUnlock();
+    #endif
 }
 
 Thread::Thread(StackSize stackSize, Time timeSlice)
@@ -38,8 +66,10 @@ Thread::Thread(StackSize stackSize, Time timeSlice)
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     SysCallData data;
-    data.objType = ObjectType::Thread;
-    data.reqType = ThreadRequestType::Create;
+    data.reqType = RequestType::TCreate;
+    data.object = this;
+    data.size = stackSize;
+    data.time = timeSlice;
     sysCall(data);
     mID = (ID) System::getCallResult();
     asmUnlock();
@@ -49,8 +79,14 @@ Thread::Thread(StackSize stackSize, Time timeSlice)
 void Thread::wrapper(Thread *running)
 {
     running->run();
-    // umesto ovoga mora da se zove syscall(threadExit);
-    System::threadStop();
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    SysCallData data;
+    data.reqType = RequestType::TStop;
+    data.object = (void*) running->mID;
+    sysCall(data);
+    asmUnlock();
+    #endif
 }
 
 void dispatch()
@@ -58,8 +94,7 @@ void dispatch()
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     SysCallData data;
-    data.objType = ObjectType::Thread;
-    data.reqType = ThreadRequestType::Dispatch;
+    data.reqType = RequestType::TDispatch;
     sysCall(data);
     asmUnlock();
     #endif
