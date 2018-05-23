@@ -198,6 +198,9 @@ void interrupt System::newTimerRoutine(...)
         };
         #endif
 
+        // If thread timeSlice is 0, forbid preemption until
+        // something else changes the context.
+        forbidPreemption = running->mTimeSlice == 0;
         tickCount = running->mTimeSlice;
         timerChangeContext = 0;
     }
@@ -256,6 +259,9 @@ void interrupt System::sysCallRoutine(...)
         {
             threadPut((PCB*) running);
             running = threadGet();
+            // If thread timeSlice is 0, forbid preemption until
+            // something else changes the context.
+            forbidPreemption = running->mTimeSlice == 0;
             tickCount = running->mTimeSlice;
             systemChangeContext = 0;
         }
