@@ -34,8 +34,8 @@ volatile PCB *System::idle = 0, *System::running = 0,
 volatile PCB *System::prioritized = 0, *System::sleeping = 0;
 
 // Temporary variables for timer routine.
-volatile unsigned tempBP, tempSP, tempSS;
-volatile PCB *temp;
+static volatile unsigned tempBP = 0, tempSP = 0, tempSS = 0;
+static volatile PCB *temp = 0;
 
 void System::initialize()
 {
@@ -50,16 +50,30 @@ void System::initialize()
     #endif
 
     // Initializing object arrays.
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
     PCB::objects = (PCB**) calloc(PCB::capacity, sizeof(PCB*));
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 
     // Initializing internal kernel threads.
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
     idle = new PCB(idleBody, 0, 1);
-    idle->mState = ThreadState::Ready;
     running = new PCB();
-    running->mState = ThreadState::Running;
-    running->mTimeSlice = 20; // remove this as time goes on
     runningKernelThread = new PCB(kernelBody);
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
+
+    idle->mState = ThreadState::Ready;
+    running->mState = ThreadState::Running;
     runningKernelThread->mState = ThreadState::Running;
+
+    running->mTimeSlice = 20; // remove this as time goes on
 
     // Initializing system variables.
     tickCount = running->mTimeSlice;
@@ -71,7 +85,6 @@ void System::finalize()
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     setvect(TimerEntry, oldTimerRoutine);
-    asmUnlock();
     #endif
 
     // Disposing of the dynamically created objects.
@@ -81,6 +94,9 @@ void System::finalize()
     
     // Disposing of the object arrays.
     free(PCB::objects); PCB::objects = 0;
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 }
 
 void System::threadPut(PCB *thread)
@@ -118,9 +134,6 @@ PCB* System::threadGet()
 
 void System::dispatch()
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
     if (System::kernelMode) System::systemChangeContext = 1;
     else
     {
@@ -129,21 +142,11 @@ void System::dispatch()
         asmInterrupt(TimerEntry);
         #endif
     }
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
 }
 
 void* System::getCallResult()
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
-    void *result = (void*) callResult;
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
-    return result;
+    return (void*) callResult;
 }
 
 void interrupt System::newTimerRoutine(...)
@@ -444,7 +447,9 @@ void System::lock()
 {
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
+    #endif
     forbidPreemption = 1;
+    #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
 }
@@ -453,7 +458,9 @@ void System::unlock()
 {
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
+    #endif
     forbidPreemption = 0;
+    #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
 }

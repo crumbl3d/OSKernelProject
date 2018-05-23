@@ -21,6 +21,8 @@ const unsigned TimerEntry = 0x08;
 const unsigned NewTimerEntry = 0x60;
 const unsigned SysCallEntry = 0x61;
 
+const unsigned InitialObjectCapacity = 100;
+
 struct RequestType
 {
     enum RequestTypeEnum

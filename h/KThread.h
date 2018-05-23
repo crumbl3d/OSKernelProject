@@ -15,8 +15,6 @@ typedef void (*ThreadBody)(); // run method type
 const StackSize minStackSize = 128; // min = 128B
 const StackSize maxStackSize = 65535; // max = 64KB
 
-const unsigned initialObjectCapacity = 100; // initial capacity
-
 struct ThreadState { enum ThreadStateEnum { New, Ready, Running, Blocked, Terminated }; };
 
 class PCB
@@ -46,7 +44,7 @@ public:
 
     static void stop();
     static void sleep(unsigned timeToSleep);
-
+protected:
     static PCB* getAt(unsigned index);
 private:
     friend class System;

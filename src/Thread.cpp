@@ -15,11 +15,11 @@
 
 void Thread::start()
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
     SysCallData data;
     data.reqType = RequestType::TStart;
     data.object = (void*) mID;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
     sysCall(data);
     asmUnlock();
     #endif
@@ -27,11 +27,11 @@ void Thread::start()
 
 void Thread::waitToComplete()
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
     SysCallData data;
     data.reqType = RequestType::TWaitToComplete;
     data.object = (void*) mID;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
     sysCall(data);
     asmUnlock();
     #endif
@@ -39,12 +39,12 @@ void Thread::waitToComplete()
 
 Thread::~Thread()
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
     waitToComplete();
     SysCallData data;
     data.reqType = RequestType::TDestroy;
     data.object = (void*) mID;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
     sysCall(data);
     asmUnlock();
     #endif
@@ -52,25 +52,28 @@ Thread::~Thread()
 
 void Thread::sleep(Time timeToSleep)
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    SysCallData data;
-    data.reqType = RequestType::TSleep;
-    data.time = timeToSleep;
-    sysCall(data);
-    asmUnlock();
-    #endif
+    if (timeToSleep > 0)
+    {
+        SysCallData data;
+        data.reqType = RequestType::TSleep;
+        data.time = timeToSleep;
+        #ifndef BCC_BLOCK_IGNORE
+        asmLock();
+        sysCall(data);
+        asmUnlock();
+        #endif
+    }
 }
 
 Thread::Thread(StackSize stackSize, Time timeSlice)
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
     SysCallData data;
     data.reqType = RequestType::TCreate;
     data.object = this;
     data.size = stackSize;
     data.time = timeSlice;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
     sysCall(data);
     mID = (ID) System::getCallResult();
     asmUnlock();
@@ -80,10 +83,10 @@ Thread::Thread(StackSize stackSize, Time timeSlice)
 void Thread::wrapper(Thread *running)
 {
     running->run();
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
     SysCallData data;
     data.reqType = RequestType::TStop;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
     sysCall(data);
     asmUnlock();
     #endif
@@ -91,10 +94,10 @@ void Thread::wrapper(Thread *running)
 
 void dispatch()
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
     SysCallData data;
     data.reqType = RequestType::TDispatch;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
     sysCall(data);
     asmUnlock();
     #endif

@@ -24,10 +24,13 @@ public:
 protected:
     virtual void run()
     {
-        System::lock();
-        cout << "Thread " << mChar << " going to sleep for " << mTimeToSleep << " ticks!" << endl;
-        System::unlock();
-        if (mTimeToSleep > 0) Thread::sleep(mTimeToSleep);
+        if (mTimeToSleep > 0)
+        {
+            System::lock();
+            cout << "Thread " << mChar << " going to sleep for " << mTimeToSleep << " ticks!" << endl;
+            System::unlock();
+            Thread::sleep(mTimeToSleep);
+        }
         for (int i = 0; i < 5; ++i)
         {
             System::lock();
@@ -47,6 +50,8 @@ private:
 
 int userMain(int argc, char* argv[])
 {
+    int i;
+
     TestThread *t[8];
     t[0] = new TestThread('A', defaultTimeSlice, 17);
     t[1] = new TestThread('B', defaultTimeSlice, 19);
@@ -56,15 +61,20 @@ int userMain(int argc, char* argv[])
     t[5] = new TestThread('F', defaultTimeSlice, 30);
     t[6] = new TestThread('G', defaultTimeSlice, 25);
     t[7] = new TestThread('H', defaultTimeSlice, 17);
-    int i;
     for (i = 0; i < 8; ++i) t[i]->start();
     for (i = 0; i < 8; ++i) t[i]->waitToComplete();
     
+    // TestThread a('A', 40), b('B', 20);
+    // a.start();
+    // b.start();
+
     for (i = 0; i < 5; ++i)
     {
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
+        #endif
         cout << "User main i = " << i << endl;
+        #ifndef BCC_BLOCK_IGNORE
         asmUnlock();
         #endif
 
@@ -74,10 +84,14 @@ int userMain(int argc, char* argv[])
 
     printf("Putting main to sleep for 50 ticks!\n");
     Thread::sleep(50);
+    
+    for (i = 0; i < 8; ++i) delete t[i];
 
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
+    #endif
     cout << "User main done!" << endl;
+    #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
 

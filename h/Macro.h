@@ -19,10 +19,11 @@
 static volatile unsigned tempSEG, tempOFF;
 
 // Call system routine for kernel level processing.
-#define sysCall(DATA) tempSEG = FP_SEG(&DATA); \
-tempOFF = FP_OFF(&DATA); \
-asm { push cx; push dx; mov cx, tempSEG; mov dx, tempOFF }; \
-asmInterrupt(SysCallEntry); \
-asm { pop dx; pop cx }
+#define sysCall(DATA) \
+    tempSEG = FP_SEG(&DATA); \
+    tempOFF = FP_OFF(&DATA); \
+    asm { push cx; push dx; mov cx, tempSEG; mov dx, tempOFF }; \
+    asmInterrupt(SysCallEntry); \
+    asm { pop dx; pop cx }
 
 #endif /* _MACRO_H_ */

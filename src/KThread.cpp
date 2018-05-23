@@ -5,7 +5,7 @@
  *     Author: Jovan Nikolov 2016/0040
  */
 
-#include <stdio.h> // TEMPORARY
+// #include <stdio.h> // TEMPORARY
 #include <stdlib.h>
 #include <mem.h>
 #include <dos.h>
@@ -15,8 +15,9 @@
 #include "Thread.h"
 #include "System.h"
 
-unsigned PCB::capacity = initialObjectCapacity, PCB::count = 0;
-PCB** PCB::objects = 0;
+unsigned PCB::capacity = InitialObjectCapacity, PCB::count = 0;
+PCB **PCB::objects = 0;
+static PCB *temp = 0;
 
 PCB::PCB()
 {
@@ -36,8 +37,14 @@ PCB::PCB(Thread *userThread, StackSize stackSize, Time timeSlice)
 PCB::~PCB()
 {
     // Only delete the stack if it was created.
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
     if (mStack) delete [] mStack;
     objects[mID] = 0;
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
     // printf("ID to delete: %d\n", mID);
     // #ifndef BCC_BLOCK_IGNORE
     // if (objects)
@@ -59,20 +66,20 @@ void PCB::start()
 
 void PCB::waitToComplete()
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
     if (mState != ThreadState::Terminated)
     {
+        #ifndef BCC_BLOCK_IGNORE
+        asmLock();
+        #endif
         // Only block the running thread if this thread is not terminated!
         System::running->mState = ThreadState::Blocked;
         System::running->mNext = mBlocked;
         mBlocked = (PCB*) System::running;
         System::dispatch();
+        #ifndef BCC_BLOCK_IGNORE
+        asmUnlock();
+        #endif
     }
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
 }
 
 void PCB::stop()
@@ -84,7 +91,6 @@ void PCB::stop()
     System::running->mState = ThreadState::Terminated;
     // Unblock any blocked threads by setting their state to Ready,
     // and putting them into the scheduler.
-    PCB *temp;
     while (System::running->mBlocked)
     {
         // printf("Unblocking the thread with ID = %d!\n", System::running->mBlocked->mID);
@@ -105,38 +111,41 @@ void PCB::stop()
 
 void PCB::sleep(unsigned timeToSleep)
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
-    // Adding the running thread to the sleeping list.
-    PCB *temp = (PCB*) System::running;
-    temp->mTimeLeft = timeToSleep;
-    temp->mState = ThreadState::Blocked;
-    PCB *previous = 0, *current = (PCB*) System::sleeping;
-    while (current && temp->mTimeLeft >= current->mTimeLeft)
+    if (timeToSleep > 0)
     {
-        // No need to go through all of the same ones,
-        // just put it at the front.
-        temp->mTimeLeft -= current->mTimeLeft;
-        previous = current;
-        current = current->mNext;
-        if (temp->mTimeLeft == 0) break;
+        #ifndef BCC_BLOCK_IGNORE
+        asmLock();
+        #endif
+        // Adding the running thread to the sleeping list.
+        temp = (PCB*) System::running;
+        temp->mTimeLeft = timeToSleep;
+        temp->mState = ThreadState::Blocked;
+        PCB *previous = 0, *current = (PCB*) System::sleeping;
+        while (current && temp->mTimeLeft >= current->mTimeLeft)
+        {
+            // No need to go through all of the same ones,
+            // just put it at the front.
+            temp->mTimeLeft -= current->mTimeLeft;
+            previous = current;
+            current = current->mNext;
+            if (temp->mTimeLeft == 0) break;
+        }
+        if (previous) previous->mNext = temp;
+        else System::sleeping = temp;
+        if (current) current->mTimeLeft -= temp->mTimeLeft;
+        temp->mNext = current;
+        current = (PCB*) System::sleeping;
+        // printf("Printing the list of sleeping threads!\n");
+        // while (current)
+        // {
+        //     printf("ID = %d TimeLeft = %d\n", current->mID, current->mTimeLeft);
+        //     current = current->mNext;
+        // }
+        System::dispatch();
+        #ifndef BCC_BLOCK_IGNORE
+        asmUnlock();
+        #endif
     }
-    if (previous) previous->mNext = temp;
-    else System::sleeping = temp;
-    if (current) current->mTimeLeft -= temp->mTimeLeft;
-    temp->mNext = current;
-    current = (PCB*) System::sleeping;
-    // printf("Printing the list of sleeping threads!\n");
-    // while (current)
-    // {
-    //     printf("ID = %d TimeLeft = %d\n", current->mID, current->mTimeLeft);
-    //     current = current->mNext;
-    // }
-    System::dispatch();
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
 }
 
 PCB* PCB::getAt(unsigned index)
@@ -148,9 +157,6 @@ PCB* PCB::getAt(unsigned index)
 void PCB::initialize(Thread *userThread, ThreadBody body,
                      StackSize stackSize, Time timeSlice)
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
     if (!userThread && !body)
     {
         // No body, just initialize the private members.
@@ -162,6 +168,9 @@ void PCB::initialize(Thread *userThread, ThreadBody body,
         if (stackSize < minStackSize) stackSize = minStackSize;
         if (stackSize > maxStackSize) stackSize = maxStackSize;
         stackSize /= sizeof(unsigned); // BYTE to WORD
+        #ifndef BCC_BLOCK_IGNORE
+        asmLock();
+        #endif
         mStack = new unsigned[stackSize];
         if (body)
         {
@@ -187,6 +196,9 @@ void PCB::initialize(Thread *userThread, ThreadBody body,
             mSS = FP_SEG(mStack + stackSize - 16); // BP
             #endif
         }
+        #ifndef BCC_BLOCK_IGNORE
+        asmUnlock();
+        #endif
     }
     mTimeSlice = timeSlice;
     mTimeLeft = 0;
@@ -196,6 +208,9 @@ void PCB::initialize(Thread *userThread, ThreadBody body,
     mID = count++;
     if (count > capacity) 
     {
+        #ifndef BCC_BLOCK_IGNORE
+        asmLock();
+        #endif
         // printf("Resizing thread object array!\n");
         PCB **temp = (PCB**) calloc(capacity << 1, sizeof(PCB*));
         if (objects)
@@ -208,19 +223,16 @@ void PCB::initialize(Thread *userThread, ThreadBody body,
             objects = temp;
             capacity <<= 1;
         }
-        else printf("Failed to resize thread object array!\n");
+        // else printf("Failed to resize thread object array!\n");
+        #ifndef BCC_BLOCK_IGNORE
+        asmUnlock();
+        #endif
     }
-    if (objects)
-    {
-        objects[mID] = this;
-        // DEBUG ONLY!!! REMOVE!!!
-        // #ifndef BCC_BLOCK_IGNORE
-        // for (unsigned i = 0; i < count; ++i)
-        //     printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
-        // #endif
-    }
-    else printf("Invalid thread object array!\n");
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
+    if (objects)  objects[mID] = this;
+    // DEBUG ONLY!!! REMOVE!!!
+    // #ifndef BCC_BLOCK_IGNORE
+    // for (unsigned i = 0; i < count; ++i)
+    //     printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
+    // #endif
+    // else printf("Invalid thread object array!\n");
 }
