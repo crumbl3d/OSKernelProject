@@ -80,19 +80,22 @@ void PCB::stop()
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     #endif
+    // printf("Stopping the thread with ID = %d!\n", System::running->mID);
     System::running->mState = ThreadState::Terminated;
     // Unblock any blocked threads by setting their state to Ready,
     // and putting them into the scheduler.
+    PCB *temp;
     while (System::running->mBlocked)
     {
-        PCB *current = System::running->mBlocked;
+        // printf("Unblocking the thread with ID = %d!\n", System::running->mBlocked->mID);
         // Setting the state to Running because threadPut will
         // then reset it to Ready. Otherwise it wont put it inside
         // the scheduler (by design).
-        current->mState = ThreadState::Running;
-        System::threadPut((PCB*) current);
-        System::running->mBlocked = current->mNext;
-        current->mNext = 0;
+        System::running->mBlocked->mState = ThreadState::Running;
+        System::threadPut(System::running->mBlocked);
+        temp = System::running->mBlocked;
+        System::running->mBlocked = System::running->mBlocked->mNext;
+        temp->mNext = 0;
     }
     System::dispatch();
     #ifndef BCC_BLOCK_IGNORE
@@ -102,7 +105,38 @@ void PCB::stop()
 
 void PCB::sleep(unsigned timeToSleep)
 {
-    printf("Time to sleep: %d\n", timeToSleep);
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
+    // Adding the running thread to the sleeping list.
+    PCB *temp = (PCB*) System::running;
+    temp->mTimeLeft = timeToSleep;
+    temp->mState = ThreadState::Blocked;
+    PCB *previous = 0, *current = (PCB*) System::sleeping;
+    while (current && temp->mTimeLeft >= current->mTimeLeft)
+    {
+        // No need to go through all of the same ones,
+        // just put it at the front.
+        temp->mTimeLeft -= current->mTimeLeft;
+        previous = current;
+        current = current->mNext;
+        if (temp->mTimeLeft == 0) break;
+    }
+    if (previous) previous->mNext = temp;
+    else System::sleeping = temp;
+    if (current) current->mTimeLeft -= temp->mTimeLeft;
+    temp->mNext = current;
+    current = (PCB*) System::sleeping;
+    // printf("Printing the list of sleeping threads!\n");
+    // while (current)
+    // {
+    //     printf("ID = %d TimeLeft = %d\n", current->mID, current->mTimeLeft);
+    //     current = current->mNext;
+    // }
+    System::dispatch();
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 }
 
 PCB* PCB::getAt(unsigned index)
@@ -117,7 +151,7 @@ void PCB::initialize(Thread *userThread, ThreadBody body,
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     #endif
-    if (userThread && body)
+    if (!userThread && !body)
     {
         // No body, just initialize the private members.
         mStack = 0;
@@ -155,13 +189,14 @@ void PCB::initialize(Thread *userThread, ThreadBody body,
         }
     }
     mTimeSlice = timeSlice;
+    mTimeLeft = 0;
     mState = ThreadState::New;
     mThread = userThread;
     mNext = mBlocked = 0;
     mID = count++;
     if (count > capacity) 
     {
-        //printf("resizing\n");
+        // printf("Resizing thread object array!\n");
         PCB **temp = (PCB**) calloc(capacity << 1, sizeof(PCB*));
         if (objects)
         {

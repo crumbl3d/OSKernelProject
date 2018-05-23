@@ -33,8 +33,9 @@ volatile PCB *System::idle = 0, *System::running = 0,
              *System::runningKernelThread = 0;
 volatile PCB *System::prioritized = 0, *System::sleeping = 0;
 
-// Temporary variables for context change.
+// Temporary variables for timer routine.
 volatile unsigned tempBP, tempSP, tempSS;
+volatile PCB *temp;
 
 void System::initialize()
 {
@@ -93,7 +94,7 @@ void System::threadPut(PCB *thread)
     thread->mState = ThreadState::Ready;
     readyThreadCount++;
     Scheduler::put(thread);
-    //printf("Put: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
+    // printf("Put: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
 }
 
 void System::threadPriorityPut(PCB *thread)
@@ -111,7 +112,7 @@ PCB* System::threadGet()
     if (thread) readyThreadCount--;
     else thread = (PCB*) idle;
     thread->mState = ThreadState::Running;
-    //printf("Get: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
+    // printf("Get: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
     return thread;
 }
 
@@ -153,11 +154,13 @@ void interrupt System::newTimerRoutine(...)
         #ifndef BCC_BLOCK_IGNORE
         asmInterrupt(NewTimerEntry);
         #endif
-        if (tickCount > 0)
-        {
-            tickCount--;
-            if (tickCount == 0) timerChangeContext = 1;
-        }
+        if (tickCount > 0) tickCount--;
+        // Only set the flag if there is at least one Ready
+        // thread or the running thread is Terminated (we need
+        // to switch to the idle thread).
+        timerChangeContext =
+            tickCount == 0 && (readyThreadCount > 0 ||
+            running->mState == ThreadState::Terminated);
     }
     // If a context change is required and preemption is allowed,
     // and there is at least one Ready thread or the running thread
@@ -198,6 +201,33 @@ void interrupt System::newTimerRoutine(...)
         tickCount = running->mTimeSlice;
         timerChangeContext = 0;
     }
+    if (sleeping && --sleeping->mTimeLeft == 0)
+    {
+        // printf("Preparing to wake up some threads!\n");
+        while (sleeping && sleeping->mTimeLeft == 0)
+        {
+            // printf("Waking up the thread with ID = %d!\n", sleeping->mID);
+            // Setting the state to Running because threadPut will
+            // then reset it to Ready. Otherwise it wont put it inside
+            // the scheduler (by design).
+            sleeping->mState = ThreadState::Running;
+            threadPut((PCB*) sleeping);
+            temp = sleeping;
+            sleeping = sleeping->mNext;
+            temp->mNext = 0;
+        }
+    }
+    // DEBUG INFO! REMOVE!!!
+    // if (sleeping)
+    // {
+    //     temp = sleeping;
+    //     printf("Printing the list of sleeping threads!\n");
+    //     while (temp)
+    //     {
+    //         printf("ID = %d TimeLeft = %d\n", temp->mID, temp->mTimeLeft);
+    //         temp = temp->mNext;
+    //     }
+    // }
 }
 
 void interrupt System::sysCallRoutine(...)
@@ -288,34 +318,33 @@ void interrupt System::sysCallRoutine(...)
 
 void System::idleBody()
 {
-    // Using readyThreadCount to prevent the host OS from killing the process.
-    while (1)
-    {
-        while (!readyThreadCount);
-        dispatch();
-    }
+    // Use unconditional jump - while (1) to avoid the need to
+    // reset the thread context for the next run.
+    while (1) while (!readyThreadCount);
 }
 
 void System::kernelBody()
 {
+    // Use unconditional jump - while (1) to avoid the need to
+    // reset the kernelThread context for the next call.
     while (1)
     {
         // Interrupts are allowed, but preemption must be blocked!
         lock();
-        //printf("Running kernel thread!\n");
+        // printf("Running kernel thread!\n");
         switch (callData->reqType)
         {
         // Thread specific requests
         case RequestType::TCreate:
         {
-            //printf("Creating a new thread!\n");
+            // printf("Creating a new thread!\n");
             PCB *thread = new PCB((Thread*) callData->object, callData->size, callData->time);
             callResult = (volatile void*) thread->mID;
             break;
         }
         case RequestType::TDestroy:
         {
-            //printf("Destroying the thread!\n");
+            // printf("Destroying the thread!\n");
             PCB *thread = PCB::getAt((ID) callData->object);
             if (thread == 0) printf("Invalid thread ID!\n");
             else delete thread;
@@ -323,7 +352,7 @@ void System::kernelBody()
         }
         case RequestType::TStart:
         {
-            //printf("Starting the thread!\n");
+            // printf("Starting the thread!\n");
             PCB *thread = PCB::getAt((ID) callData->object);
             if (thread == 0) printf("Invalid thread ID!\n");
             else thread->start();
@@ -331,13 +360,13 @@ void System::kernelBody()
         }
         case RequestType::TStop:
         {
-            //printf("Stopping the running thread!\n");
-            running->stop();
+            // printf("Stopping the running thread!\n");
+            PCB::stop();
             break;
         }
         case RequestType::TWaitToComplete:
         {
-            //printf("Blocking the running thread on another thread!\n");
+            // printf("Blocking the running thread on another thread!\n");
             PCB *thread = PCB::getAt((ID) callData->object);
             if (thread == 0) printf("Invalid thread ID!\n");
             else thread->waitToComplete();
@@ -345,56 +374,56 @@ void System::kernelBody()
         }
         case RequestType::TSleep:
         {
-            //printf("Putting the thread to sleep!\n");
-            //systemChangeContext = 1;
+            // printf("Putting the running thread to sleep!\n");
+            PCB::sleep(callData->time);
             break;
         }
         case RequestType::TDispatch:
         {
-            //printf("Dispatching!\n");
+            // printf("Dispatching!\n");
             systemChangeContext = 1;
             break;
         }
         // Semaphore specific requests
         case RequestType::SCreate:
         {
-            //printf("Creating a new semaphore!\n");
+            // printf("Creating a new semaphore!\n");
             break;
         }
         case RequestType::SDestroy:
         {
-            //printf("Destroying the semaphore!\n");
+            // printf("Destroying the semaphore!\n");
             break;
         }
         case RequestType::SWait:
         {
-            //printf("Waiting on the semaphore!\n");
+            // printf("Waiting on the semaphore!\n");
             break;
         }
         case RequestType::SSignal:
         {
-            //printf("Signaling the semaphore!\n");
+            // printf("Signaling the semaphore!\n");
             break;
         }
         // Event specific requests
         case RequestType::ECreate:
         {
-            //printf("Creating a new semaphore!\n");
+            // printf("Creating a new semaphore!\n");
             break;
         }
         case RequestType::EDestroy:
         {
-            //printf("Destroying the semaphore!\n");
+            // printf("Destroying the semaphore!\n");
             break;
         }
         case RequestType::EWait:
         {
-            //printf("Waiting on the semaphore!\n");
+            // printf("Waiting on the semaphore!\n");
             break;
         }
         case RequestType::ESignal:
         {
-            //printf("Signaling the semaphore!\n");
+            // printf("Signaling the semaphore!\n");
             break;
         }
         default: printf("Invalid system call request type!\n");

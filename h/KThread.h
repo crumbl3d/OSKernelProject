@@ -60,13 +60,15 @@ private:
     unsigned mSS;
     unsigned mSP;
     unsigned mBP;
-    unsigned mTimeSlice;
-    ThreadState::ThreadStateEnum mState;
 
-    // System data: mThread (pointer to the user thread),
+    // System data: mTimeSlice (number of timer ticks this thread will run)
+    //              mTimeLeft (number of timer ticks left to sleep)
+    //              mThread (pointer to the user thread),
     //              mNext (pointer to the next kernel thread)
     //              mBlocked (list of threads blocked on this one)
     //              mID (unique ID of this kernel thread)
+    Time mTimeSlice, mTimeLeft;
+    ThreadState::ThreadStateEnum mState;
     Thread *mThread;
     PCB *mNext, *mBlocked;
     ID mID;

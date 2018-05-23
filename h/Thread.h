@@ -34,9 +34,9 @@ protected:
 
     virtual void run() {}
 private:
-    ID mID;
-
     static void wrapper(Thread *running);
+    
+    ID mID;
 };
 
 void dispatch();

@@ -18,19 +18,23 @@
 class TestThread : public Thread
 {
 public:
-    TestThread(char charToPrint, Time timeSlice) :
-        Thread(defaultStackSize, timeSlice), mChar(charToPrint) {}
+    TestThread(char charToPrint, Time timeSlice = defaultTimeSlice, Time timeToSleep = 0) :
+        Thread(defaultStackSize, timeSlice), mChar(charToPrint), mTimeToSleep(timeToSleep) {}
     virtual ~TestThread() { waitToComplete(); }
 protected:
     virtual void run()
     {
-        for (int i = 0; i < 30; ++i)
+        System::lock();
+        cout << "Thread " << mChar << " going to sleep for " << mTimeToSleep << " ticks!" << endl;
+        System::unlock();
+        if (mTimeToSleep > 0) Thread::sleep(mTimeToSleep);
+        for (int i = 0; i < 5; ++i)
         {
             System::lock();
             cout << "Thread " << mChar << " i = " << i << endl;
             System::unlock();
             for (int j = 0; j < 10000; ++j)
-                for (int k = 0; k < 30000; ++k);
+                for (int k = 0; k < 10000; ++k);
         }
         System::lock();
         cout << "Thread " << mChar << " done!" << endl;
@@ -38,15 +42,25 @@ protected:
     }
 private:
     char mChar;
+    Time mTimeToSleep;
 };
 
 int userMain(int argc, char* argv[])
 {
-    TestThread t1('A', 40), t2('B', 20);
-    t1.start();
-    t2.start();
-
-    for (int i = 0; i < 30; ++i)
+    TestThread *t[8];
+    t[0] = new TestThread('A', defaultTimeSlice, 17);
+    t[1] = new TestThread('B', defaultTimeSlice, 19);
+    t[2] = new TestThread('C', defaultTimeSlice, 15);
+    t[3] = new TestThread('D', defaultTimeSlice, 17);
+    t[4] = new TestThread('E', defaultTimeSlice, 22);
+    t[5] = new TestThread('F', defaultTimeSlice, 30);
+    t[6] = new TestThread('G', defaultTimeSlice, 25);
+    t[7] = new TestThread('H', defaultTimeSlice, 17);
+    int i;
+    for (i = 0; i < 8; ++i) t[i]->start();
+    for (i = 0; i < 8; ++i) t[i]->waitToComplete();
+    
+    for (i = 0; i < 5; ++i)
     {
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
@@ -57,7 +71,10 @@ int userMain(int argc, char* argv[])
         for (int j = 0; j < 30000; ++j)
             for (int k = 0; k < 30000; ++k);
     }
-    
+
+    printf("Putting main to sleep for 50 ticks!\n");
+    Thread::sleep(50);
+
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     cout << "User main done!" << endl;
@@ -69,7 +86,7 @@ int userMain(int argc, char* argv[])
 
 void tick()
 {
-    //printf("*");
+    // printf("*");
 }
 
 int result;

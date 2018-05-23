@@ -41,6 +41,7 @@ Thread::~Thread()
 {
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
+    waitToComplete();
     SysCallData data;
     data.reqType = RequestType::TDestroy;
     data.object = (void*) mID;
