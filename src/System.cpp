@@ -23,11 +23,11 @@
 extern void tick();
 
 // Initializing System variables.
-pInterrupt System::oldTimerRoutine = 0;
+InterruptRoutine System::oldTimerRoutine = 0;
 volatile SysCallData *System::callData = 0;
 volatile void *System::callResult = 0;
-volatile unsigned System::locked = 0, System::changeContext = 0,
-                  System::systemChangeContext = 0, System::restoreUserThread = 0,
+volatile unsigned System::kernelMode = 0, System::forbidPreemption = 0,
+                  System::timerChangeContext = 0, System::systemChangeContext = 0,
                   System::tickCount = 0, System::readyThreadCount = 0;
 volatile PCB *System::idle = 0, *System::running = 0,
              *System::runningKernelThread = 0;
@@ -84,21 +84,16 @@ void System::finalize()
 
 void System::threadPut(PCB *thread)
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
-    // Cannot put the idle thread into the Scheduler!
-    if (thread != idle)
-    {
-        //printf("Put: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
-        readyThreadCount++;
-        thread->mState = ThreadState::Ready;
-        Scheduler::put(thread);
-    }
-    else printf("ERROR: idle thread\n");
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
+    // We can only put new or running threads into the scheduler.
+    if (thread->mState == ThreadState::Ready) return;
+    if (thread->mState == ThreadState::Blocked) return;
+    if (thread->mState == ThreadState::Terminated) return;
+    // Cannot put the idle thread into the scheduler!
+    if (thread == idle) return;
+    thread->mState = ThreadState::Ready;
+    readyThreadCount++;
+    Scheduler::put(thread);
+    //printf("Put: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
 }
 
 void System::threadPriorityPut(PCB *thread)
@@ -114,31 +109,45 @@ PCB* System::threadGet()
     // return (PCB*) idle;
     PCB *thread = Scheduler::get();
     if (thread) readyThreadCount--;
-    else
-    {
-        thread = (PCB*) idle;
-        printf("Idle thread!\n");
-    }
+    else thread = (PCB*) idle;
     thread->mState = ThreadState::Running;
     //printf("Get: SS = %d, SP = %d, BP = %d, timeSlice = %d\n", thread->mSS, thread->mSP, thread->mBP, thread->mTimeSlice);
     return thread;
 }
 
-void System::threadStop()
+void System::dispatch()
 {
-    if (!running) return; // Exception, no running thread!
-    running->mState = ThreadState::Terminated;
-    dispatch();
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
+    if (System::kernelMode) System::systemChangeContext = 1;
+    else
+    {
+        timerChangeContext = 1;
+        #ifndef BCC_BLOCK_IGNORE
+        asmInterrupt(TimerEntry);
+        #endif
+    }
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 }
 
 void* System::getCallResult()
 {
-    return (void*) callResult;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
+    void *result = (void*) callResult;
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
+    return result;
 }
 
 void interrupt System::newTimerRoutine(...)
 {
-    if (!changeContext)
+    if (!timerChangeContext)
     {
         tick();
         #ifndef BCC_BLOCK_IGNORE
@@ -147,14 +156,14 @@ void interrupt System::newTimerRoutine(...)
         if (tickCount > 0)
         {
             tickCount--;
-            if (tickCount == 0) changeContext = 1;
+            if (tickCount == 0) timerChangeContext = 1;
         }
     }
     // If a context change is required and preemption is allowed,
     // and there is at least one Ready thread or the running thread
     // is Terminated (we need to switch to the idle thread).
-    if (changeContext && !locked && (readyThreadCount > 0 || 
-        running->mState == ThreadState::Terminated))
+    if (timerChangeContext && !forbidPreemption &&
+        (readyThreadCount > 0 || running->mState == ThreadState::Terminated))
     {
         // Saving the context of the running thread.
         #ifndef BCC_BLOCK_IGNORE
@@ -170,7 +179,7 @@ void interrupt System::newTimerRoutine(...)
         running->mBP = tempBP;
 
         // Getting the next thread.
-        if (running->mState != ThreadState::Terminated) threadPut((PCB*) running);
+        threadPut((PCB*) running);
         running = threadGet();
 
         // Restoring the context of the next thread.
@@ -187,13 +196,13 @@ void interrupt System::newTimerRoutine(...)
         #endif
 
         tickCount = running->mTimeSlice;
-        changeContext = 0;
+        timerChangeContext = 0;
     }
 }
 
 void interrupt System::sysCallRoutine(...)
 {
-    if (restoreUserThread)
+    if (kernelMode)
     {
         // Interrupts are now blocked, so it is safe to allow preemption.
         unlock();
@@ -215,7 +224,7 @@ void interrupt System::sysCallRoutine(...)
         // the user thread context before switching to it.
         if (systemChangeContext)
         {
-            if (running->mState != ThreadState::Terminated) threadPut((PCB*) running);
+            threadPut((PCB*) running);
             running = threadGet();
             tickCount = running->mTimeSlice;
             systemChangeContext = 0;
@@ -233,7 +242,7 @@ void interrupt System::sysCallRoutine(...)
             mov bp, tempBP
         };
         #endif
-        restoreUserThread = 0;
+        kernelMode = 0;
     }
     else
     {
@@ -273,13 +282,18 @@ void interrupt System::sysCallRoutine(...)
         #endif
 
         tickCount = runningKernelThread->mTimeSlice;
+        kernelMode = 1;
     }
 }
 
 void System::idleBody()
 {
     // Using readyThreadCount to prevent the host OS from killing the process.
-    while (1) while (!readyThreadCount);
+    while (1)
+    {
+        while (!readyThreadCount);
+        dispatch();
+    }
 }
 
 void System::kernelBody()
@@ -295,42 +309,38 @@ void System::kernelBody()
         case RequestType::TCreate:
         {
             //printf("Creating a new thread!\n");
-            PCB *temp = new PCB((Thread*) callData->object, callData->size, callData->time);
-            callResult = (volatile void*) temp->mID;
+            PCB *thread = new PCB((Thread*) callData->object, callData->size, callData->time);
+            callResult = (volatile void*) thread->mID;
             break;
         }
         case RequestType::TDestroy:
         {
             //printf("Destroying the thread!\n");
-            PCB *temp = PCB::getAt((ID) callData->object);
-            if (temp == 0) printf("Invalid thread ID!\n");
-            else delete temp;
+            PCB *thread = PCB::getAt((ID) callData->object);
+            if (thread == 0) printf("Invalid thread ID!\n");
+            else delete thread;
             break;
         }
         case RequestType::TStart:
         {
             //printf("Starting the thread!\n");
-            PCB *temp = PCB::getAt((ID) callData->object);
-            if (temp == 0) printf("Invalid thread ID!\n");
-            else temp->start();
+            PCB *thread = PCB::getAt((ID) callData->object);
+            if (thread == 0) printf("Invalid thread ID!\n");
+            else thread->start();
             break;
         }
         case RequestType::TStop:
         {
-            //printf("Stopping the thread!\n");
-            PCB *temp = PCB::getAt((ID) callData->object);
-            if (temp == 0) printf("Invalid thread ID!\n");
-            else
-            {
-                temp->mState = ThreadState::Terminated;
-                systemChangeContext = 1;
-            }
+            //printf("Stopping the running thread!\n");
+            running->stop();
             break;
         }
         case RequestType::TWaitToComplete:
         {
-            //printf("Blocking the thread on another thread!\n");
-            //systemChangeContext = 1;
+            //printf("Blocking the running thread on another thread!\n");
+            PCB *thread = PCB::getAt((ID) callData->object);
+            if (thread == 0) printf("Invalid thread ID!\n");
+            else thread->waitToComplete();
             break;
         }
         case RequestType::TSleep:
@@ -389,7 +399,6 @@ void System::kernelBody()
         }
         default: printf("Invalid system call request type!\n");
         }
-        restoreUserThread = 1;
         #ifndef BCC_BLOCK_IGNORE
         asmInterrupt(SysCallEntry);
         #endif
@@ -400,7 +409,7 @@ void System::lock()
 {
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
-    locked = 1;
+    forbidPreemption = 1;
     asmUnlock();
     #endif
 }
@@ -409,7 +418,7 @@ void System::unlock()
 {
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
-    locked = 0;
+    forbidPreemption = 0;
     asmUnlock();
     #endif
 }

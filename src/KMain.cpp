@@ -35,7 +35,6 @@ protected:
         System::lock();
         cout << "Thread " << mChar << " done!" << endl;
         System::unlock();
-        System::threadStop();
     }
 private:
     char mChar;

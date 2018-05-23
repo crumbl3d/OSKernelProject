@@ -10,7 +10,7 @@
 
 #include "Thread.h"
 
-typedef void (*pBody)(); // run method type
+typedef void (*ThreadBody)(); // run method type
 
 const StackSize minStackSize = 128; // min = 128B
 const StackSize maxStackSize = 65535; // max = 64KB
@@ -22,16 +22,21 @@ struct ThreadState { enum ThreadStateEnum { New, Ready, Running, Blocked, Termin
 class PCB
 {
 public:
-    // for creating initial context
+    // Used for creating the initial context.
     PCB();
 
+    // Used for creating kernel threads. Parameters:
     // body - method to run
-    // stackSize - in BYTE (8b), quantum - in x55ms
-    PCB(pBody body, StackSize stackSize = defaultStackSize,
+    // stackSize - size of the stack in BYTE (8b)
+    // timeSlice - time to run in x55ms
+    PCB(ThreadBody body, StackSize stackSize = defaultStackSize,
         Time timeSlice = defaultTimeSlice);
 
+    // Used for creating user threads. Parameters:
     // thread - user thread this object is created for
-    PCB(Thread *thread, StackSize stackSize = defaultStackSize,
+    // stackSize - size of the stack in BYTE (8b)
+    // timeSlice - time to run in x55ms
+    PCB(Thread *userThread, StackSize stackSize = defaultStackSize,
         Time timeSlice = defaultTimeSlice);
 
     virtual ~PCB();
@@ -39,8 +44,7 @@ public:
     void start();
     void waitToComplete();
 
-    void setTimeSlice(Time timeSlice);
-
+    static void stop();
     static void sleep(unsigned timeToSleep);
 
     static PCB* getAt(unsigned index);
@@ -48,8 +52,8 @@ private:
     friend class System;
 
     // Common initialization
-    static void initialize(PCB *kernelThread, Thread *userThread, pBody body,
-                           StackSize stackSize, Time timeSlice);
+    void initialize(Thread *userThread, ThreadBody body,
+                    StackSize stackSize, Time timeSlice);
 
     // Thread context
     unsigned *mStack;
@@ -61,9 +65,10 @@ private:
 
     // System data: mThread (pointer to the user thread),
     //              mNext (pointer to the next kernel thread)
+    //              mBlocked (list of threads blocked on this one)
     //              mID (unique ID of this kernel thread)
     Thread *mThread;
-    PCB *mNext;
+    PCB *mNext, *mBlocked;
     ID mID;
     
     // Class data: capacity (current maximum capacity of the object array)

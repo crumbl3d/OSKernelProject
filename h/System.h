@@ -15,7 +15,7 @@
 
 #include "Thread.h"
 
-typedef void interrupt (*pInterrupt)(...);
+typedef void interrupt (*InterruptRoutine)(...);
 
 const unsigned TimerEntry = 0x08;
 const unsigned NewTimerEntry = 0x60;
@@ -60,33 +60,35 @@ public:
     static void initialize();
     static void finalize();
 
+    static void* getCallResult();
+
+    // temporary, move to private
+    static void lock();
+    static void unlock();
+protected:
+    friend class PCB;
+    
     static void threadPut(PCB *thread);
     static void threadPriorityPut(PCB *thread);
     static PCB* threadGet();
 
-    // todo: remove this and put inside wrapper in Thread.h
-    static void threadStop();
-
-    static void* getCallResult();
-//private:
+    static void dispatch();
+private:
     static void interrupt newTimerRoutine(...);
     static void interrupt sysCallRoutine(...);
 
     static void idleBody();
     static void kernelBody();
-    
-    static void lock();
-    static void unlock();
 
-    static pInterrupt oldTimerRoutine;
+    static InterruptRoutine oldTimerRoutine;
     // Global system call data and result.
     static volatile SysCallData *callData;
     static volatile void *callResult;
-    // Kernel flags: locked (forbid preemption),
-    //               changeContext (requested context change)
-    //               systemChangeContext (requested context change on system call)
-    //               restoreUserThread (restore user thread after system call)
-    static volatile unsigned locked, changeContext, systemChangeContext, restoreUserThread;
+    // Kernel flags: kernelMode (kernel mode or user mode)
+    //               forbidPreemption (forbid preemption),
+    //               timerChangeContext (request context change on timer tick)
+    //               systemChangeContext (request context change on system call)
+    static volatile unsigned kernelMode, forbidPreemption, timerChangeContext, systemChangeContext;
     // Counters: tickCount (number of timer ticks passed),
     //           readyThreadCount (number of threads in the scheduler)
     static volatile unsigned tickCount, readyThreadCount;

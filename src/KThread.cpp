@@ -20,17 +20,17 @@ PCB** PCB::objects = 0;
 
 PCB::PCB()
 {
-    initialize(this, 0, 0, 0, defaultTimeSlice);
+    initialize(0, 0, 0, defaultTimeSlice);
 }
 
-PCB::PCB(pBody body, StackSize stackSize, Time timeSlice)
+PCB::PCB(ThreadBody body, StackSize stackSize, Time timeSlice)
 {
-    initialize(this, 0, body, stackSize, timeSlice);
+    initialize(0, body, stackSize, timeSlice);
 }
 
-PCB::PCB(Thread *thread, StackSize stackSize, Time timeSlice)
+PCB::PCB(Thread *userThread, StackSize stackSize, Time timeSlice)
 {
-    initialize(this, thread, 0, stackSize, timeSlice);
+    initialize(userThread, 0, stackSize, timeSlice);
 }
 
 PCB::~PCB()
@@ -48,22 +48,56 @@ PCB::~PCB()
 
 void PCB::start()
 {
-    // If the thread is already in the scheduler, do not put it again!
-    if (mState == ThreadState::New)
-    {
-        mState = ThreadState::Ready;
-        System::threadPut(this);
-    }
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
+    System::threadPut(this);
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 }
 
 void PCB::waitToComplete()
 {
-
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
+    if (mState != ThreadState::Terminated)
+    {
+        // Only block the running thread if this thread is not terminated!
+        System::running->mState = ThreadState::Blocked;
+        System::running->mNext = mBlocked;
+        mBlocked = (PCB*) System::running;
+        System::dispatch();
+    }
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 }
 
-void PCB::setTimeSlice(Time timeSlice)
+void PCB::stop()
 {
-    mTimeSlice = timeSlice;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
+    System::running->mState = ThreadState::Terminated;
+    // Unblock any blocked threads by setting their state to Ready,
+    // and putting them into the scheduler.
+    while (System::running->mBlocked)
+    {
+        PCB *current = System::running->mBlocked;
+        // Setting the state to Running because threadPut will
+        // then reset it to Ready. Otherwise it wont put it inside
+        // the scheduler (by design).
+        current->mState = ThreadState::Running;
+        System::threadPut((PCB*) current);
+        System::running->mBlocked = current->mNext;
+        current->mNext = 0;
+    }
+    System::dispatch();
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 }
 
 void PCB::sleep(unsigned timeToSleep)
@@ -77,7 +111,7 @@ PCB* PCB::getAt(unsigned index)
     else return 0;
 }
 
-void PCB::initialize(PCB *kernelThread, Thread *userThread, pBody body,
+void PCB::initialize(Thread *userThread, ThreadBody body,
                      StackSize stackSize, Time timeSlice)
 {
     #ifndef BCC_BLOCK_IGNORE
@@ -86,45 +120,45 @@ void PCB::initialize(PCB *kernelThread, Thread *userThread, pBody body,
     if (userThread && body)
     {
         // No body, just initialize the private members.
-        kernelThread->mStack = 0;
-        kernelThread->mBP = kernelThread->mSP = kernelThread->mSS = 0;
+        mStack = 0;
+        mBP = mSP = mSS = 0;
     }
     else
     {
         if (stackSize < minStackSize) stackSize = minStackSize;
         if (stackSize > maxStackSize) stackSize = maxStackSize;
         stackSize /= sizeof(unsigned); // BYTE to WORD
-        kernelThread->mStack = new unsigned[stackSize];
+        mStack = new unsigned[stackSize];
         if (body)
         {
             // Has body, but no user thread.
-            kernelThread->mStack[stackSize - 1] = 0x200; // PSW
+            mStack[stackSize - 1] = 0x200; // PSW
             #ifndef BCC_BLOCK_IGNORE
-            kernelThread->mStack[stackSize - 2] = FP_SEG(body); // CS
-            kernelThread->mStack[stackSize - 3] = FP_OFF(body); // PC
-            kernelThread->mSS = FP_SEG(kernelThread->mStack + stackSize - 12); // BP
-            kernelThread->mBP = kernelThread->mSP = FP_OFF(kernelThread->mStack + stackSize - 12); // BP
+            mStack[stackSize - 2] = FP_SEG(body); // CS
+            mStack[stackSize - 3] = FP_OFF(body); // PC
+            mSS = FP_SEG(mStack + stackSize - 12); // BP
+            mBP = mSP = FP_OFF(mStack + stackSize - 12); // BP
             #endif
         }
         else
         {
             // Has user thread - implicit body.
-            kernelThread->mStack[stackSize - 5] = 0x200; // PSW
+            mStack[stackSize - 5] = 0x200; // PSW
             #ifndef BCC_BLOCK_IGNORE
-            kernelThread->mStack[stackSize - 1] = FP_SEG(userThread); // wrapper() param
-            kernelThread->mStack[stackSize - 2] = FP_OFF(userThread); // wrapper() param
-            kernelThread->mStack[stackSize - 6] = FP_SEG(Thread::wrapper); // CS
-            kernelThread->mStack[stackSize - 7] = FP_OFF(Thread::wrapper); // PC
-            kernelThread->mSP = kernelThread->mBP = FP_OFF(kernelThread->mStack + stackSize - 16); // BP
-            kernelThread->mSS = FP_SEG(kernelThread->mStack + stackSize - 16); // BP
+            mStack[stackSize - 1] = FP_SEG(userThread); // wrapper() param
+            mStack[stackSize - 2] = FP_OFF(userThread); // wrapper() param
+            mStack[stackSize - 6] = FP_SEG(Thread::wrapper); // CS
+            mStack[stackSize - 7] = FP_OFF(Thread::wrapper); // PC
+            mSP = mBP = FP_OFF(mStack + stackSize - 16); // BP
+            mSS = FP_SEG(mStack + stackSize - 16); // BP
             #endif
         }
     }
-    kernelThread->mTimeSlice = timeSlice;
-    kernelThread->mState = ThreadState::New;
-    kernelThread->mThread = userThread;
-    kernelThread->mNext = 0;
-    kernelThread->mID = count++;
+    mTimeSlice = timeSlice;
+    mState = ThreadState::New;
+    mThread = userThread;
+    mNext = mBlocked = 0;
+    mID = count++;
     if (count > capacity) 
     {
         //printf("resizing\n");
@@ -143,7 +177,7 @@ void PCB::initialize(PCB *kernelThread, Thread *userThread, pBody body,
     }
     if (objects)
     {
-        objects[kernelThread->mID] = kernelThread;
+        objects[mID] = this;
         // DEBUG ONLY!!! REMOVE!!!
         // #ifndef BCC_BLOCK_IGNORE
         // for (unsigned i = 0; i < count; ++i)

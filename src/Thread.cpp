@@ -83,7 +83,6 @@ void Thread::wrapper(Thread *running)
     asmLock();
     SysCallData data;
     data.reqType = RequestType::TStop;
-    data.object = (void*) running->mID;
     sysCall(data);
     asmUnlock();
     #endif
