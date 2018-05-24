@@ -7,6 +7,7 @@
 
 #include <dos.h>
 #include <mem.h>
+// #include <stdio.h>
 #include <stdlib.h>
 
 #include "Macro.h"
@@ -86,9 +87,6 @@ void PCB::stop ()
     while (System::running->mBlocked)
     {
         // printf("Unblocking the thread with ID = %d!\n", System::running->mBlocked->mID);
-        // Setting the state to Running because threadPut will
-        // then reset it to Ready. Otherwise it wont put it inside
-        // the scheduler (by design).
         System::running->mBlocked->mState = ThreadState::Running;
         System::threadPut(System::running->mBlocked);
         temp = System::running->mBlocked;
@@ -235,9 +233,6 @@ PCBQueue::~PCBQueue ()
     // We only need to unlink the PCBs and put them into the scheduler.
     while (mFirst)
     {
-        // Setting the state to Running because threadPut will
-        // then reset it to Ready. Otherwise it wont put it inside
-        // the scheduler (by design).
         mFirst->mState = ThreadState::Running;
         System::threadPut(mFirst);
         temp = mFirst;

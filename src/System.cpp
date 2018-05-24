@@ -162,37 +162,44 @@ void interrupt System::newTimerRoutine(...)
 {
     if (!timerChangeContext)
     {
+        // Runs this code only if this is a normal timer tick.
         tick();
         #ifndef BCC_BLOCK_IGNORE
         asmInterrupt(NewTimerEntry);
         #endif
-        if (tickCount > 0) tickCount--;
-        // Only set the flag if there is at least one Ready
-        // thread or the running thread is Terminated (we need
-        // to switch to the idle thread).
-        timerChangeContext =
-            tickCount == 0 && (readyThreadCount > 0 ||
-            running->mState == ThreadState::Terminated);
+        if (tickCount > 0) --tickCount;
+        if (sleeping && --sleeping->mTimeLeft == 0)
+        {
+            // printf("Preparing to wake up some threads!\n");
+            while (sleeping && sleeping->mTimeLeft == 0)
+            {
+                // printf("Waking up the thread with ID = %d!\n", sleeping->mID);
+                sleeping->mState = ThreadState::Running;
+                threadPut((PCB*) sleeping);
+                temp = sleeping;
+                sleeping = sleeping->mNext;
+                temp->mNext = 0;
+            }
+        }
+        // DEBUG INFO! REMOVE!!!
+        // if (sleeping)
+        // {
+        //     temp = sleeping;
+        //     printf("Printing the list of sleeping threads!\n");
+        //     while (temp)
+        //     {
+        //         printf("ID = %d TimeLeft = %d\n", temp->mID, temp->mTimeLeft);
+        //         temp = temp->mNext;
+        //     }
+        // }
     }
-    // If a context change is required and preemption is allowed,
-    // and there is at least one Ready thread or the running thread
-    // is Terminated (we need to switch to the idle thread).
-    if (timerChangeContext && !forbidPreemption &&
-        (readyThreadCount > 0 || running->mState == ThreadState::Terminated))
+    // If an explicit context change is required or if the time slice is done
+    // and either preemption is allowed and there is at least one Ready thread,
+    // or the running thread is Terminated (switch to idle thread).
+    if (timerChangeContext || (tickCount == 0 && running->mTimeSlice > 0 && !forbidPreemption &&
+        (readyThreadCount > 0 || running->mState == ThreadState::Terminated)))
     {
         // Saving the context of the running thread.
-        // #ifndef BCC_BLOCK_IGNORE
-        // asm {
-        //     mov tempBP, bp
-        //     mov tempSP, sp
-        //     mov tempSS, ss
-        // };
-        // #endif
-
-        // running->mSS = tempSS;
-        // running->mSP = tempSP;
-        // running->mBP = tempBP;
-        
         #ifndef BCC_BLOCK_IGNORE
         asm mov tempREG, ss;
         running->mSS = tempREG;
@@ -207,18 +214,6 @@ void interrupt System::newTimerRoutine(...)
         running = threadGet();
 
         // Restoring the context of the next thread.
-        // tempSS = running->mSS;
-        // tempSP = running->mSP;
-        // tempBP = running->mBP;
-
-        // #ifndef BCC_BLOCK_IGNORE
-        // asm {
-        //     mov ss, tempSS
-        //     mov sp, tempSP
-        //     mov bp, tempBP
-        // };
-        // #endif
-
         #ifndef BCC_BLOCK_IGNORE
         tempREG = running->mSS;
         asm mov ss, tempREG;
@@ -228,39 +223,9 @@ void interrupt System::newTimerRoutine(...)
         asm mov bp, tempREG;
         #endif
 
-        // If thread timeSlice is 0, forbid preemption until
-        // something else changes the context.
-        forbidPreemption = running->mTimeSlice == 0;
         tickCount = running->mTimeSlice;
         timerChangeContext = 0;
     }
-    if (sleeping && --sleeping->mTimeLeft == 0)
-    {
-        // printf("Preparing to wake up some threads!\n");
-        while (sleeping && sleeping->mTimeLeft == 0)
-        {
-            // printf("Waking up the thread with ID = %d!\n", sleeping->mID);
-            // Setting the state to Running because threadPut will
-            // then reset it to Ready. Otherwise it wont put it inside
-            // the scheduler (by design).
-            sleeping->mState = ThreadState::Running;
-            threadPut((PCB*) sleeping);
-            temp = sleeping;
-            sleeping = sleeping->mNext;
-            temp->mNext = 0;
-        }
-    }
-    // DEBUG INFO! REMOVE!!!
-    // if (sleeping)
-    // {
-    //     temp = sleeping;
-    //     printf("Printing the list of sleeping threads!\n");
-    //     while (temp)
-    //     {
-    //         printf("ID = %d TimeLeft = %d\n", temp->mID, temp->mTimeLeft);
-    //         temp = temp->mNext;
-    //     }
-    // }
 }
 
 void interrupt System::sysCallRoutine(...)
@@ -270,19 +235,7 @@ void interrupt System::sysCallRoutine(...)
         // Interrupts are now blocked, so it is safe to allow preemption.
         forbidPreemption = 0;
 
-        // Saving the context of the kernel thread.
-        // #ifndef BCC_BLOCK_IGNORE
-        // asm {
-        //     mov tempBP, bp
-        //     mov tempSP, sp
-        //     mov tempSS, ss
-        // };
-        // #endif
-        
-        // runningKernelThread->mSS = tempSS;
-        // runningKernelThread->mSP = tempSP;
-        // runningKernelThread->mBP = tempBP;
-        
+        // Saving the context of the kernel thread.        
         #ifndef BCC_BLOCK_IGNORE
         asm mov tempREG, ss;
         runningKernelThread->mSS = tempREG;
@@ -298,26 +251,11 @@ void interrupt System::sysCallRoutine(...)
         {
             threadPut((PCB*) running);
             running = threadGet();
-            // If thread timeSlice is 0, forbid preemption until
-            // something else changes the context.
-            forbidPreemption = running->mTimeSlice == 0;
             tickCount = running->mTimeSlice;
             systemChangeContext = 0;
         }
 
         // Restoring the context of the user thread.
-        // tempSS = running->mSS;
-        // tempSP = running->mSP;
-        // tempBP = running->mBP;
-
-        // #ifndef BCC_BLOCK_IGNORE
-        // asm {
-        //     mov ss, tempSS
-        //     mov sp, tempSP
-        //     mov bp, tempBP
-        // };
-        // #endif
-        
         #ifndef BCC_BLOCK_IGNORE
         tempREG = running->mSS;
         asm mov ss, tempREG;
@@ -341,18 +279,6 @@ void interrupt System::sysCallRoutine(...)
         #endif
     
         // Saving the context of the user thread.
-        // #ifndef BCC_BLOCK_IGNORE
-        // asm {
-        //     mov tempBP, bp
-        //     mov tempSP, sp
-        //     mov tempSS, ss
-        // };
-        // #endif
-        
-        // running->mSS = tempSS;
-        // running->mSP = tempSP;
-        // running->mBP = tempBP;
-        
         #ifndef BCC_BLOCK_IGNORE
         asm mov tempREG, ss;
         running->mSS = tempREG;
@@ -364,18 +290,6 @@ void interrupt System::sysCallRoutine(...)
 
 
         // Restoring the context of the kernel thread.
-        // tempSS = runningKernelThread->mSS;
-        // tempSP = runningKernelThread->mSP;
-        // tempBP = runningKernelThread->mBP;
-
-        // #ifndef BCC_BLOCK_IGNORE
-        // asm {
-        //     mov ss, tempSS
-        //     mov sp, tempSP
-        //     mov bp, tempBP
-        // };
-        // #endif
-
         #ifndef BCC_BLOCK_IGNORE
         tempREG = runningKernelThread->mSS;
         asm mov ss, tempREG;
@@ -413,7 +327,8 @@ void System::kernelBody()
         {
             // printf("Creating a new thread!\n");
             PCB *thread = new PCB((Thread*) callData->object, callData->size, callData->time);
-            callResult = (volatile void*) thread->mID;
+            if (thread == 0) printf("Failed to create a Thread object!\n");
+            else callResult = (volatile void*) thread->mID;
             break;
         }
         case RequestType::TDestroy:
@@ -462,47 +377,62 @@ void System::kernelBody()
         case RequestType::SCreate:
         {
             // printf("Creating a new semaphore!\n");
+            KernelSem *sem = new KernelSem((Semaphore*) callData->object, callData->number);
+            if (sem == 0) printf("Failed to create a Semaphore object!\n");
+            else callResult = (volatile void*) sem->mID;
             break;
         }
         case RequestType::SDestroy:
         {
             // printf("Destroying the semaphore!\n");
+            KernelSem *sem = KernelSem::getAt((ID) callData->object);
+            if (sem == 0) printf("Invalid semaphore ID!\n");
+            else delete sem;
             break;
         }
         case RequestType::SWait:
         {
             // printf("Waiting on the semaphore!\n");
+            KernelSem *sem = KernelSem::getAt((ID) callData->object);
+            if (sem == 0) printf("Invalid semaphore ID!\n");
+            else sem->wait(callData->number);
             break;
         }
         case RequestType::SSignal:
         {
             // printf("Signaling the semaphore!\n");
+            KernelSem *sem = KernelSem::getAt((ID) callData->object);
+            if (sem == 0) printf("Invalid semaphore ID!\n");
+            else sem->signal();
             break;
         }
         case RequestType::SValue:
         {
             // printf("Getting the semaphore value!\n");
+            KernelSem *sem = KernelSem::getAt((ID) callData->object);
+            if (sem == 0) printf("Invalid semaphore ID!\n");
+            else callResult = (volatile void*) sem->val();
             break;
         }
         // Event specific requests
         case RequestType::ECreate:
         {
-            // printf("Creating a new semaphore!\n");
+            // printf("Creating a new event!\n");
             break;
         }
         case RequestType::EDestroy:
         {
-            // printf("Destroying the semaphore!\n");
+            // printf("Destroying the event!\n");
             break;
         }
         case RequestType::EWait:
         {
-            // printf("Waiting on the semaphore!\n");
+            // printf("Waiting for the event!\n");
             break;
         }
         case RequestType::ESignal:
         {
-            // printf("Signaling the semaphore!\n");
+            // printf("Signaling the event!\n");
             break;
         }
         default: printf("Invalid system call request type!\n");

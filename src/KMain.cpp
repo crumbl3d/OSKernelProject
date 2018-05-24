@@ -13,7 +13,7 @@
 
 // extern int userMain (int argc, char* argv[]);
 
-//static Semaphore mutex;
+Semaphore *mutex;
 
 class TestThread : public Thread
 {
@@ -26,14 +26,16 @@ protected:
     {
         if (mTimeToSleep > 0)
         {
-            printf("Thread %d going to sleep for %d ticks!\n", mChar, mTimeToSleep);
+            printf("Thread %c going to sleep for %d ticks!\n", mChar, mTimeToSleep);
             Thread::sleep(mTimeToSleep);
         }
         for (int i = 0; i < 30; ++i)
         {
             printf("Thread %c i = %d\n", mChar, i);
+            if (i == 6 || i == 17) mutex->wait(1);
+            if (i == 13 || i == 25) mutex->signal();
             for (int j = 0; j < 30000; ++j)
-                for (int k = 0; k < 10000; ++k);
+                for (int k = 0; k < 30000; ++k);
         }
         printf("Thread %c done!\n", mChar);
     }
@@ -58,24 +60,31 @@ int userMain (int argc, char* argv[])
     // for (i = 0; i < 8; ++i) t[i]->start();
     // for (i = 0; i < 8; ++i) t[i]->waitToComplete();
     
-    TestThread a('A', 40), b('B', 20);
+    TestThread a('A', 0), b('B', 20);
     a.start();
     b.start();
+
+    mutex = new Semaphore(0);
 
     for (i = 0; i < 30; ++i)
     {
         printf("User main i = %d\n", i);
-            
+        if (i == 7 || i == 19) mutex->signal();
         for (int j = 0; j < 30000; ++j)
             for (int k = 0; k < 30000; ++k);
     }
 
     printf("Putting main to sleep for 50 ticks!\n");
     Thread::sleep(50);
+    printf("Main woke up! Waiting for children to complete!\n");
     
-    // for (i = 0; i < 8; ++i) delete t[i];
+    a.waitToComplete();
+    b.waitToComplete();
 
     printf("User main done!\n");
+
+    // for (i = 0; i < 8; ++i) delete t[i];
+    delete mutex;
 
     return 0;
 }

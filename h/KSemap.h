@@ -32,10 +32,12 @@ public:
 
     int val () const;
 protected:
-    void block ();
-    void deblock ();
+    static KernelSem* getAt (unsigned index);
 private:
     friend class System;
+
+    void block ();
+    void deblock ();
 
     // Common initialization
     void initialize (Semaphore *userSem, int init);

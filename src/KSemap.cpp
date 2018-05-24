@@ -6,6 +6,7 @@
  */
 
 #include <mem.h>
+// #include <stdio.h>
 #include <stdlib.h>
 
 #include "Macro.h"
@@ -43,6 +44,7 @@ int KernelSem::wait (int toBlock)
         block();
         result = 1;
     }
+    // printf("Wait: Semaphore value = %d!\n", mValue);
     #ifndef BCC_BLOCK_IGNORE
     System::unlock();
     #endif
@@ -55,6 +57,7 @@ void KernelSem::signal ()
     System::lock();
     #endif
     if (mValue++ < 0) deblock();
+    // printf("Signal: Semaphore value = %d!\n", mValue);
     #ifndef BCC_BLOCK_IGNORE
     System::unlock();
     #endif
@@ -65,11 +68,18 @@ int KernelSem::val () const
     return mValue;
 }
 
+KernelSem* KernelSem::getAt (unsigned index)
+{
+    if (index < count) return objects[index];
+    else return 0;
+}
+
 void KernelSem::block ()
 {
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     #endif
+    // printf("Blocking the thread with the ID %d!\n", System::running->mID);
     System::running->mState = ThreadState::Blocked;
     mBlocked->put((PCB*) System::running);
     System::dispatch();
@@ -84,11 +94,9 @@ void KernelSem::deblock ()
     asmLock();
     #endif
     PCB *thread = mBlocked->get();
-    // Setting the state to Running because threadPut will
-    // then reset it to Ready. Otherwise it wont put it inside
-    // the scheduler (by design).
     if (thread)
     {
+        // printf("Unblocking the thread with the ID %d!\n", thread->mID);
         thread->mState = ThreadState::Running;
         System::threadPut(thread);
     }
