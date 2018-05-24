@@ -13,6 +13,7 @@
 
 #include "Macro.h"
 #include "KThread.h"
+#include "KSemap.h"
 #include "System.h"
 
 // Only for VS Code to stop IntelliSense from being annoying.
@@ -34,7 +35,7 @@ volatile PCB *System::idle = 0, *System::running = 0,
 volatile PCB *System::prioritized = 0, *System::sleeping = 0;
 
 // Temporary variables for timer routine.
-static volatile unsigned tempBP = 0, tempSP = 0, tempSS = 0;
+static volatile unsigned tempREG = 0; //tempBP = 0, tempSP = 0, tempSS = 0, 
 static volatile PCB *temp = 0;
 
 void System::initialize()
@@ -46,28 +47,16 @@ void System::initialize()
     setvect(TimerEntry, newTimerRoutine);
     setvect(NewTimerEntry, oldTimerRoutine);
     setvect(SysCallEntry, sysCallRoutine);
-    asmUnlock();
     #endif
 
     // Initializing object arrays.
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
     PCB::objects = (PCB**) calloc(PCB::capacity, sizeof(PCB*));
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
+    KernelSem::objects = (KernelSem**) calloc(KernelSem::capacity, sizeof(KernelSem*));
 
     // Initializing internal kernel threads.
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
     idle = new PCB(idleBody, 0, 1);
     running = new PCB();
     runningKernelThread = new PCB(kernelBody);
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
 
     idle->mState = ThreadState::Ready;
     running->mState = ThreadState::Running;
@@ -77,6 +66,10 @@ void System::initialize()
 
     // Initializing system variables.
     tickCount = running->mTimeSlice;
+
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 }
 
 void System::finalize()
@@ -91,9 +84,11 @@ void System::finalize()
     delete idle; idle = 0;
     delete running; running = 0;
     delete runningKernelThread; runningKernelThread = 0;
-    
+
     // Disposing of the object arrays.
     free(PCB::objects); PCB::objects = 0;
+    free(KernelSem::objects); KernelSem::objects = 0;
+
     #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
@@ -105,30 +100,44 @@ void System::threadPut(PCB *thread)
     if (thread->mState == ThreadState::Ready) return;
     if (thread->mState == ThreadState::Blocked) return;
     if (thread->mState == ThreadState::Terminated) return;
-    // Cannot put the idle thread into the scheduler!
+    // We cannot put the idle thread into the scheduler!
     if (thread == idle) return;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
+    // Change the thread state and put it into the scheduler.
     thread->mState = ThreadState::Ready;
     readyThreadCount++;
     Scheduler::put(thread);
     // printf("Put: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
 }
 
 void System::threadPriorityPut(PCB *thread)
 {
-    // ovde stavljati u red prioritetnih niti
+    // TODO: Prioritized threads for Events...
 }
 
 PCB* System::threadGet()
 {
-    // ovde obraditi prioritetne niti
-    // PCB *res = Scheduler::get();
-    // if (res != 0) return res;
-    // return (PCB*) idle;
-    PCB *thread = Scheduler::get();
-    if (thread) readyThreadCount--;
-    else thread = (PCB*) idle;
+    #ifndef BCC_BLOCK_IGNORE
+    asmLock();
+    #endif
+    // TODO: Prioritized threads for Events...
+
+    // If there is at least one thread in the scheduler, return it,
+    // otherwise return the Idle thread.
+    PCB *thread = (readyThreadCount ? Scheduler::get() : (PCB*) idle);
+    // Decrement the Ready thread counter if we got a thread from the
+    // scheduler and set the thread state to Running.
+    if (readyThreadCount) readyThreadCount--;
     thread->mState = ThreadState::Running;
     // printf("Get: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
+    #ifndef BCC_BLOCK_IGNORE
+    asmUnlock();
+    #endif
     return thread;
 }
 
@@ -172,33 +181,51 @@ void interrupt System::newTimerRoutine(...)
         (readyThreadCount > 0 || running->mState == ThreadState::Terminated))
     {
         // Saving the context of the running thread.
-        #ifndef BCC_BLOCK_IGNORE
-        asm {
-            mov tempBP, bp
-            mov tempSP, sp
-            mov tempSS, ss
-        };
-        #endif
+        // #ifndef BCC_BLOCK_IGNORE
+        // asm {
+        //     mov tempBP, bp
+        //     mov tempSP, sp
+        //     mov tempSS, ss
+        // };
+        // #endif
 
-        running->mSS = tempSS;
-        running->mSP = tempSP;
-        running->mBP = tempBP;
+        // running->mSS = tempSS;
+        // running->mSP = tempSP;
+        // running->mBP = tempBP;
+        
+        #ifndef BCC_BLOCK_IGNORE
+        asm mov tempREG, ss;
+        running->mSS = tempREG;
+        asm mov tempREG, sp;
+        running->mSP = tempREG;
+        asm mov tempREG, bp;
+        running->mBP = tempREG;
+        #endif
 
         // Getting the next thread.
         threadPut((PCB*) running);
         running = threadGet();
 
         // Restoring the context of the next thread.
-        tempSS = running->mSS;
-        tempSP = running->mSP;
-        tempBP = running->mBP;
+        // tempSS = running->mSS;
+        // tempSP = running->mSP;
+        // tempBP = running->mBP;
+
+        // #ifndef BCC_BLOCK_IGNORE
+        // asm {
+        //     mov ss, tempSS
+        //     mov sp, tempSP
+        //     mov bp, tempBP
+        // };
+        // #endif
 
         #ifndef BCC_BLOCK_IGNORE
-        asm {
-            mov ss, tempSS
-            mov sp, tempSP
-            mov bp, tempBP
-        };
+        tempREG = running->mSS;
+        asm mov ss, tempREG;
+        tempREG = running->mSP;
+        asm mov sp, tempREG;
+        tempREG = running->mBP;
+        asm mov bp, tempREG;
         #endif
 
         // If thread timeSlice is 0, forbid preemption until
@@ -241,20 +268,29 @@ void interrupt System::sysCallRoutine(...)
     if (kernelMode)
     {
         // Interrupts are now blocked, so it is safe to allow preemption.
-        unlock();
+        forbidPreemption = 0;
 
         // Saving the context of the kernel thread.
-        #ifndef BCC_BLOCK_IGNORE
-        asm {
-            mov tempBP, bp
-            mov tempSP, sp
-            mov tempSS, ss
-        };
-        #endif
+        // #ifndef BCC_BLOCK_IGNORE
+        // asm {
+        //     mov tempBP, bp
+        //     mov tempSP, sp
+        //     mov tempSS, ss
+        // };
+        // #endif
         
-        runningKernelThread->mSS = tempSS;
-        runningKernelThread->mSP = tempSP;
-        runningKernelThread->mBP = tempBP;
+        // runningKernelThread->mSS = tempSS;
+        // runningKernelThread->mSP = tempSP;
+        // runningKernelThread->mBP = tempBP;
+        
+        #ifndef BCC_BLOCK_IGNORE
+        asm mov tempREG, ss;
+        runningKernelThread->mSS = tempREG;
+        asm mov tempREG, sp;
+        runningKernelThread->mSP = tempREG;
+        asm mov tempREG, bp;
+        runningKernelThread->mBP = tempREG;
+        #endif
 
         // If any of the blocking requests are made, we need to change
         // the user thread context before switching to it.
@@ -270,17 +306,27 @@ void interrupt System::sysCallRoutine(...)
         }
 
         // Restoring the context of the user thread.
-        tempSS = running->mSS;
-        tempSP = running->mSP;
-        tempBP = running->mBP;
+        // tempSS = running->mSS;
+        // tempSP = running->mSP;
+        // tempBP = running->mBP;
 
+        // #ifndef BCC_BLOCK_IGNORE
+        // asm {
+        //     mov ss, tempSS
+        //     mov sp, tempSP
+        //     mov bp, tempBP
+        // };
+        // #endif
+        
         #ifndef BCC_BLOCK_IGNORE
-        asm {
-            mov ss, tempSS
-            mov sp, tempSP
-            mov bp, tempBP
-        };
+        tempREG = running->mSS;
+        asm mov ss, tempREG;
+        tempREG = running->mSP;
+        asm mov sp, tempREG;
+        tempREG = running->mBP;
+        asm mov bp, tempREG;
         #endif
+
         kernelMode = 0;
     }
     else
@@ -288,36 +334,55 @@ void interrupt System::sysCallRoutine(...)
         // Getting the call params.
         #ifndef BCC_BLOCK_IGNORE
         asm {
-            mov tempSS, cx
-            mov tempSP, dx
+            mov tempSEG, cx
+            mov tempOFF, dx
         };
-        callData = (SysCallData*) MK_FP(tempSS, tempSP);
+        callData = (SysCallData*) MK_FP(tempSEG, tempOFF);
         #endif
     
         // Saving the context of the user thread.
-        #ifndef BCC_BLOCK_IGNORE
-        asm {
-            mov tempBP, bp
-            mov tempSP, sp
-            mov tempSS, ss
-        };
-        #endif
+        // #ifndef BCC_BLOCK_IGNORE
+        // asm {
+        //     mov tempBP, bp
+        //     mov tempSP, sp
+        //     mov tempSS, ss
+        // };
+        // #endif
         
-        running->mSS = tempSS;
-        running->mSP = tempSP;
-        running->mBP = tempBP;
+        // running->mSS = tempSS;
+        // running->mSP = tempSP;
+        // running->mBP = tempBP;
+        
+        #ifndef BCC_BLOCK_IGNORE
+        asm mov tempREG, ss;
+        running->mSS = tempREG;
+        asm mov tempREG, sp;
+        running->mSP = tempREG;
+        asm mov tempREG, bp;
+        running->mBP = tempREG;
+        #endif
+
 
         // Restoring the context of the kernel thread.
-        tempSS = runningKernelThread->mSS;
-        tempSP = runningKernelThread->mSP;
-        tempBP = runningKernelThread->mBP;
+        // tempSS = runningKernelThread->mSS;
+        // tempSP = runningKernelThread->mSP;
+        // tempBP = runningKernelThread->mBP;
+
+        // #ifndef BCC_BLOCK_IGNORE
+        // asm {
+        //     mov ss, tempSS
+        //     mov sp, tempSP
+        //     mov bp, tempBP
+        // };
+        // #endif
 
         #ifndef BCC_BLOCK_IGNORE
-        asm {
-            mov ss, tempSS
-            mov sp, tempSP
-            mov bp, tempBP
-        };
+        tempREG = runningKernelThread->mSS;
+        asm mov ss, tempREG;
+        tempREG = runningKernelThread->mSP;
+        asm mov sp, tempREG;
+        tempREG = runningKernelThread->mBP;
+        asm mov bp, tempREG;
         #endif
 
         tickCount = runningKernelThread->mTimeSlice;
@@ -339,7 +404,7 @@ void System::kernelBody()
     while (1)
     {
         // Interrupts are allowed, but preemption must be blocked!
-        lock();
+        forbidPreemption = 1;
         // printf("Running kernel thread!\n");
         switch (callData->reqType)
         {
@@ -414,6 +479,11 @@ void System::kernelBody()
             // printf("Signaling the semaphore!\n");
             break;
         }
+        case RequestType::SValue:
+        {
+            // printf("Getting the semaphore value!\n");
+            break;
+        }
         // Event specific requests
         case RequestType::ECreate:
         {
@@ -459,7 +529,8 @@ void System::unlock()
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     #endif
-    forbidPreemption = 0;
+    // Only unlock if the CPU is NOT in kernel mode!
+    if (!kernelMode) forbidPreemption = 0;
     #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif

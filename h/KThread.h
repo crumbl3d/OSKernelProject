@@ -13,7 +13,7 @@
 typedef void (*ThreadBody)(); // run method type
 
 const StackSize minStackSize = 128; // min = 128B
-const StackSize maxStackSize = 65535; // max = 64KB
+const StackSize maxStackSize = 65535ul; // max = 64KB
 
 struct ThreadState { enum ThreadStateEnum { New, Ready, Running, Blocked, Terminated }; };
 
@@ -21,37 +21,39 @@ class PCB
 {
 public:
     // Used for creating the initial context.
-    PCB();
+    PCB ();
 
     // Used for creating kernel threads. Parameters:
-    // body - method to run
-    // stackSize - size of the stack in BYTE (8b)
-    // timeSlice - time to run in x55ms
-    PCB(ThreadBody body, StackSize stackSize = defaultStackSize,
-        Time timeSlice = defaultTimeSlice);
+    //      body - method to run
+    //      stackSize - size of the stack in BYTE (8b)
+    //      timeSlice - time to run in x55ms
+    PCB (ThreadBody body, StackSize stackSize = defaultStackSize,
+         Time timeSlice = defaultTimeSlice);
 
     // Used for creating user threads. Parameters:
-    // thread - user thread this object is created for
-    // stackSize - size of the stack in BYTE (8b)
-    // timeSlice - time to run in x55ms
-    PCB(Thread *userThread, StackSize stackSize = defaultStackSize,
-        Time timeSlice = defaultTimeSlice);
+    //      userThread - user thread this object is created for
+    //      stackSize - size of the stack in BYTE (8b)
+    //      timeSlice - time to run in x55ms
+    PCB (Thread *userThread, StackSize stackSize = defaultStackSize,
+         Time timeSlice = defaultTimeSlice);
 
-    virtual ~PCB();
+    virtual ~PCB ();
 
-    void start();
-    void waitToComplete();
+    void start ();
+    void waitToComplete ();
 
-    static void stop();
-    static void sleep(unsigned timeToSleep);
+    static void stop ();
+    static void sleep (unsigned timeToSleep);
 protected:
-    static PCB* getAt(unsigned index);
+    static PCB* getAt (unsigned index);
 private:
     friend class System;
+    friend class PCBQueue;
+    friend class KernelSem;
 
     // Common initialization
-    void initialize(Thread *userThread, ThreadBody body,
-                    StackSize stackSize, Time timeSlice);
+    void initialize (Thread *userThread, ThreadBody body,
+                     StackSize stackSize, Time timeSlice);
 
     // Thread context
     unsigned *mStack;
@@ -76,6 +78,18 @@ private:
     //             objects (array of all the created objects of this class)
     static unsigned capacity, count;
     static PCB **objects;
+};
+
+class PCBQueue
+{
+public:
+    PCBQueue ();
+    ~PCBQueue ();
+
+    void put (PCB *thread);
+    PCB* get ();
+private:
+    PCB *mFirst, *mLast;
 };
 
 #endif /* _KTHREAD_H_ */

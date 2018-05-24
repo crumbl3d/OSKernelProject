@@ -5,79 +5,67 @@
  *     Author: Jovan Nikolov 2016/0040
  */
 
-#include <dos.h>
 #include <stdio.h>
-#include <iostream.h>
 
-#include "Macro.h"
-#include "System.h"
 #include "Thread.h"
+#include "Semaphor.h"
+#include "System.h"
 
-// extern int userMain(int argc, char* argv[]);
+// extern int userMain (int argc, char* argv[]);
+
+//static Semaphore mutex;
 
 class TestThread : public Thread
 {
 public:
-    TestThread(char charToPrint, Time timeSlice = defaultTimeSlice, Time timeToSleep = 0) :
+    TestThread (char charToPrint, Time timeSlice = defaultTimeSlice, Time timeToSleep = 0) :
         Thread(defaultStackSize, timeSlice), mChar(charToPrint), mTimeToSleep(timeToSleep) {}
-    virtual ~TestThread() { waitToComplete(); }
+    virtual ~TestThread () { waitToComplete(); }
 protected:
-    virtual void run()
+    virtual void run ()
     {
         if (mTimeToSleep > 0)
         {
-            System::lock();
-            cout << "Thread " << mChar << " going to sleep for " << mTimeToSleep << " ticks!" << endl;
-            System::unlock();
+            printf("Thread %d going to sleep for %d ticks!\n", mChar, mTimeToSleep);
             Thread::sleep(mTimeToSleep);
         }
-        for (int i = 0; i < 5; ++i)
+        for (int i = 0; i < 30; ++i)
         {
-            System::lock();
-            cout << "Thread " << mChar << " i = " << i << endl;
-            System::unlock();
-            for (int j = 0; j < 10000; ++j)
+            printf("Thread %c i = %d\n", mChar, i);
+            for (int j = 0; j < 30000; ++j)
                 for (int k = 0; k < 10000; ++k);
         }
-        System::lock();
-        cout << "Thread " << mChar << " done!" << endl;
-        System::unlock();
+        printf("Thread %c done!\n", mChar);
     }
 private:
     char mChar;
     Time mTimeToSleep;
 };
 
-int userMain(int argc, char* argv[])
+int userMain (int argc, char* argv[])
 {
     int i;
 
-    TestThread *t[8];
-    t[0] = new TestThread('A', defaultTimeSlice, 17);
-    t[1] = new TestThread('B', defaultTimeSlice, 19);
-    t[2] = new TestThread('C', defaultTimeSlice, 15);
-    t[3] = new TestThread('D', defaultTimeSlice, 17);
-    t[4] = new TestThread('E', defaultTimeSlice, 22);
-    t[5] = new TestThread('F', defaultTimeSlice, 30);
-    t[6] = new TestThread('G', defaultTimeSlice, 25);
-    t[7] = new TestThread('H', defaultTimeSlice, 17);
-    for (i = 0; i < 8; ++i) t[i]->start();
-    for (i = 0; i < 8; ++i) t[i]->waitToComplete();
+    // TestThread *t[8];
+    // t[0] = new TestThread('A', defaultTimeSlice, 17);
+    // t[1] = new TestThread('B', defaultTimeSlice, 19);
+    // t[2] = new TestThread('C', defaultTimeSlice, 15);
+    // t[3] = new TestThread('D', defaultTimeSlice, 17);
+    // t[4] = new TestThread('E', defaultTimeSlice, 22);
+    // t[5] = new TestThread('F', defaultTimeSlice, 30);
+    // t[6] = new TestThread('G', defaultTimeSlice, 25);
+    // t[7] = new TestThread('H', defaultTimeSlice, 17);
+    // for (i = 0; i < 8; ++i) t[i]->start();
+    // for (i = 0; i < 8; ++i) t[i]->waitToComplete();
     
-    // TestThread a('A', 40), b('B', 20);
-    // a.start();
-    // b.start();
+    TestThread a('A', 40), b('B', 20);
+    a.start();
+    b.start();
 
-    for (i = 0; i < 5; ++i)
+    for (i = 0; i < 30; ++i)
     {
-        #ifndef BCC_BLOCK_IGNORE
-        asmLock();
-        #endif
-        cout << "User main i = " << i << endl;
-        #ifndef BCC_BLOCK_IGNORE
-        asmUnlock();
-        #endif
-
+        printf("User main i = %d\n", i);
+            
         for (int j = 0; j < 30000; ++j)
             for (int k = 0; k < 30000; ++k);
     }
@@ -85,27 +73,21 @@ int userMain(int argc, char* argv[])
     printf("Putting main to sleep for 50 ticks!\n");
     Thread::sleep(50);
     
-    for (i = 0; i < 8; ++i) delete t[i];
+    // for (i = 0; i < 8; ++i) delete t[i];
 
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
-    cout << "User main done!" << endl;
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
+    printf("User main done!\n");
 
     return 0;
 }
 
-void tick()
+void tick ()
 {
     // printf("*");
 }
 
 int result;
 
-int main(int argc, char* argv[])
+int main (int argc, char* argv[])
 {
     System::initialize();
     printf("===============================================================================\n");

@@ -5,41 +5,39 @@
  *     Author: Jovan Nikolov 2016/0040
  */
 
-// #include <stdio.h> // TEMPORARY
-#include <stdlib.h>
-#include <mem.h>
 #include <dos.h>
+#include <mem.h>
+#include <stdlib.h>
 
 #include "Macro.h"
 #include "KThread.h"
-#include "Thread.h"
 #include "System.h"
 
 unsigned PCB::capacity = InitialObjectCapacity, PCB::count = 0;
 PCB **PCB::objects = 0;
 static PCB *temp = 0;
 
-PCB::PCB()
+PCB::PCB ()
 {
     initialize(0, 0, 0, defaultTimeSlice);
 }
 
-PCB::PCB(ThreadBody body, StackSize stackSize, Time timeSlice)
+PCB::PCB (ThreadBody body, StackSize stackSize, Time timeSlice)
 {
     initialize(0, body, stackSize, timeSlice);
 }
 
-PCB::PCB(Thread *userThread, StackSize stackSize, Time timeSlice)
+PCB::PCB (Thread *userThread, StackSize stackSize, Time timeSlice)
 {
     initialize(userThread, 0, stackSize, timeSlice);
 }
 
-PCB::~PCB()
+PCB::~PCB ()
 {
-    // Only delete the stack if it was created.
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     #endif
+    // Only delete the stack if it was created.
     if (mStack) delete [] mStack;
     objects[mID] = 0;
     #ifndef BCC_BLOCK_IGNORE
@@ -53,25 +51,19 @@ PCB::~PCB()
     // #endif
 }
 
-void PCB::start()
+void PCB::start ()
 {
-    #ifndef BCC_BLOCK_IGNORE
-    asmLock();
-    #endif
     System::threadPut(this);
-    #ifndef BCC_BLOCK_IGNORE
-    asmUnlock();
-    #endif
 }
 
-void PCB::waitToComplete()
+void PCB::waitToComplete ()
 {
+    // Only block the running thread if this thread is not terminated!
     if (mState != ThreadState::Terminated)
     {
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
         #endif
-        // Only block the running thread if this thread is not terminated!
         System::running->mState = ThreadState::Blocked;
         System::running->mNext = mBlocked;
         mBlocked = (PCB*) System::running;
@@ -82,7 +74,7 @@ void PCB::waitToComplete()
     }
 }
 
-void PCB::stop()
+void PCB::stop ()
 {
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
@@ -109,7 +101,7 @@ void PCB::stop()
     #endif
 }
 
-void PCB::sleep(unsigned timeToSleep)
+void PCB::sleep (unsigned timeToSleep)
 {
     if (timeToSleep > 0)
     {
@@ -148,14 +140,14 @@ void PCB::sleep(unsigned timeToSleep)
     }
 }
 
-PCB* PCB::getAt(unsigned index)
+PCB* PCB::getAt (unsigned index)
 {
     if (index < count) return objects[index];
     else return 0;
 }
 
-void PCB::initialize(Thread *userThread, ThreadBody body,
-                     StackSize stackSize, Time timeSlice)
+void PCB::initialize (Thread *userThread, ThreadBody body,
+                      StackSize stackSize, Time timeSlice)
 {
     if (!userThread && !body)
     {
@@ -206,21 +198,21 @@ void PCB::initialize(Thread *userThread, ThreadBody body,
     mThread = userThread;
     mNext = mBlocked = 0;
     mID = count++;
-    if (count > capacity) 
+    if (count > capacity)
     {
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
         #endif
         // printf("Resizing thread object array!\n");
-        PCB **temp = (PCB**) calloc(capacity << 1, sizeof(PCB*));
+        PCB **newObjects = (PCB**) calloc(capacity << 1, sizeof(PCB*));
         if (objects)
         {
-            memcpy(temp, objects, capacity * sizeof(PCB*));
+            memcpy(newObjects, objects, capacity * sizeof(PCB*));
             free(objects);
         }
-        if (temp)
+        if (newObjects)
         {
-            objects = temp;
+            objects = newObjects;
             capacity <<= 1;
         }
         // else printf("Failed to resize thread object array!\n");
@@ -235,4 +227,36 @@ void PCB::initialize(Thread *userThread, ThreadBody body,
     //     printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
     // #endif
     // else printf("Invalid thread object array!\n");
+}
+
+PCBQueue::PCBQueue () : mFirst(0), mLast(0) {}
+PCBQueue::~PCBQueue ()
+{
+    // We only need to unlink the PCBs and put them into the scheduler.
+    while (mFirst)
+    {
+        // Setting the state to Running because threadPut will
+        // then reset it to Ready. Otherwise it wont put it inside
+        // the scheduler (by design).
+        mFirst->mState = ThreadState::Running;
+        System::threadPut(mFirst);
+        temp = mFirst;
+        mFirst = mFirst->mNext;
+        temp->mNext = 0;
+    }
+    mLast = 0;
+}
+
+void PCBQueue::put (PCB *thread)
+{
+    mLast = (!mFirst ? mFirst : mLast->mNext) = thread;
+}
+
+PCB* PCBQueue::get ()
+{
+    temp = mFirst;
+    if (mFirst) mFirst = mFirst->mNext;
+    else mFirst = mLast = 0;
+    if (temp) temp->mNext = 0; // Remove from the queue!
+    return temp;
 }

@@ -15,7 +15,7 @@
 
 #include "Thread.h"
 
-typedef void interrupt (*InterruptRoutine)(...);
+typedef void interrupt (*InterruptRoutine) (...);
 
 const unsigned TimerEntry = 0x08;
 const unsigned NewTimerEntry = 0x60;
@@ -40,6 +40,7 @@ struct RequestType
         SDestroy        = 0x11,
         SWait           = 0x12,
         SSignal         = 0x13,
+        SValue          = 0x14,
         // Event specific requests
         ECreate         = 0x20,
         EDestroy        = 0x21,
@@ -54,33 +55,35 @@ struct SysCallData
     void *object;
     StackSize size;
     Time time;
+    int number;
 };
 
 class System
 {
 public:
-    static void initialize();
-    static void finalize();
+    static void initialize ();
+    static void finalize ();
 
-    static void* getCallResult();
+    static void lock ();
+    static void unlock ();
 
-    // temporary, move to private
-    static void lock();
-    static void unlock();
+    static void* getCallResult ();
 protected:
     friend class PCB;
-    
-    static void threadPut(PCB *thread);
-    static void threadPriorityPut(PCB *thread);
-    static PCB* threadGet();
+    friend class PCBQueue;
+    friend class KernelSem;
 
-    static void dispatch();
+    static void threadPut (PCB *thread);
+    static void threadPriorityPut (PCB *thread);
+    static PCB* threadGet ();
+
+    static void dispatch ();
 private:
-    static void interrupt newTimerRoutine(...);
-    static void interrupt sysCallRoutine(...);
+    static void interrupt newTimerRoutine (...);
+    static void interrupt sysCallRoutine (...);
 
-    static void idleBody();
-    static void kernelBody();
+    static void idleBody ();
+    static void kernelBody ();
 
     static InterruptRoutine oldTimerRoutine;
     // Global system call data and result.

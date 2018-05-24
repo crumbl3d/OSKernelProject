@@ -6,11 +6,9 @@
  */
 
 #include <dos.h>
-#include <stdio.h>
 
 #include "Macro.h"
 #include "Thread.h"
-#include "KThread.h"
 #include "System.h"
 
 void Thread::start()

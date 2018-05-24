@@ -20,21 +20,21 @@ class PCB; // Kernel's implementation of a user's thread
 class Thread
 {
 public:
-    void start();
-    void waitToComplete();
+    void start ();
+    void waitToComplete ();
 
-    virtual ~Thread();
+    virtual ~Thread ();
 
-    static void sleep(Time timeToSleep);
+    static void sleep (Time timeToSleep);
 protected:
     friend class PCB;
 
-    Thread(StackSize stackSize = defaultStackSize,
-           Time timeSlice = defaultTimeSlice);
+    Thread (StackSize stackSize = defaultStackSize,
+            Time timeSlice = defaultTimeSlice);
 
-    virtual void run() {}
+    virtual void run () {}
 private:
-    static void wrapper(Thread *running);
+    static void wrapper (Thread *running);
     
     ID mID;
 };
