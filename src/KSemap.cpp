@@ -68,7 +68,7 @@ int KernelSem::val () const
     return mValue;
 }
 
-KernelSem* KernelSem::getAt (unsigned index)
+KernelSem* KernelSem::at (unsigned index)
 {
     if (index < count) return objects[index];
     else return 0;
@@ -96,7 +96,7 @@ void KernelSem::deblock ()
     PCB *thread = mBlocked->get();
     if (thread)
     {
-        // printf("Unblocking the thread with the ID %d!\n", thread->mID);
+        // printf("Deblocking the thread with the ID %d!\n", thread->mID);
         thread->mState = ThreadState::Running;
         System::threadPut(thread);
     }

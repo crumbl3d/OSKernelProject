@@ -82,11 +82,11 @@ void PCB::stop ()
     #endif
     // printf("Stopping the thread with ID = %d!\n", System::running->mID);
     System::running->mState = ThreadState::Terminated;
-    // Unblock any blocked threads by setting their state to Ready,
+    // Deblocking any blocked threads by setting their state to Ready,
     // and putting them into the scheduler.
     while (System::running->mBlocked)
     {
-        // printf("Unblocking the thread with ID = %d!\n", System::running->mBlocked->mID);
+        // printf("Deblocking the thread with ID = %d!\n", System::running->mBlocked->mID);
         System::running->mBlocked->mState = ThreadState::Running;
         System::threadPut(System::running->mBlocked);
         temp = System::running->mBlocked;
@@ -138,7 +138,7 @@ void PCB::sleep (unsigned timeToSleep)
     }
 }
 
-PCB* PCB::getAt (unsigned index)
+PCB* PCB::at (unsigned index)
 {
     if (index < count) return objects[index];
     else return 0;
@@ -254,4 +254,9 @@ PCB* PCBQueue::get ()
     else mFirst = mLast = 0;
     if (temp) temp->mNext = 0; // Remove from the queue!
     return temp;
+}
+
+int PCBQueue::isEmpty ()
+{
+    return mFirst == 0;
 }

@@ -45,11 +45,12 @@ public:
     static void stop ();
     static void sleep (unsigned timeToSleep);
 protected:
-    static PCB* getAt (unsigned index);
+    static PCB* at (unsigned index);
 private:
     friend class System;
     friend class PCBQueue;
     friend class KernelSem;
+    friend class KernelEv;
 
     // Common initialization
     void initialize (Thread *userThread, ThreadBody body,
@@ -88,6 +89,8 @@ public:
 
     void put (PCB *thread);
     PCB* get ();
+
+    int isEmpty();
 private:
     PCB *mFirst, *mLast;
 };

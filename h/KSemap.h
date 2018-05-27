@@ -25,14 +25,14 @@ public:
     //      init - initial semaphore value
     KernelSem (Semaphore *userSem, int init = 1);
 
-    virtual ~KernelSem ();
+    ~KernelSem ();
 
     virtual int wait (int toBlock);
     virtual void signal ();
 
     int val () const;
 protected:
-    static KernelSem* getAt (unsigned index);
+    static KernelSem* at (unsigned index);
 private:
     friend class System;
 
@@ -46,7 +46,7 @@ private:
     int mValue;
 
     // System data: mSemaphore (pointer to the user semaphore),
-    //              mBlocked (list of threads blocked on this one)
+    //              mBlocked (list of threads blocked on this semaphore)
     //              mID (unique ID of this kernel semaphore)
     Semaphore *mSemaphore;
     PCBQueue *mBlocked;

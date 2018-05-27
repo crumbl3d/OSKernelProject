@@ -13,8 +13,8 @@
 #define interrupt
 #endif
 
-#include "Thread.h"
-
+typedef unsigned long StackSize;
+typedef unsigned int Time; // time, x 55ms
 typedef void interrupt (*InterruptRoutine) (...);
 
 const unsigned TimerEntry = 0x08;
@@ -72,6 +72,7 @@ protected:
     friend class PCB;
     friend class PCBQueue;
     friend class KernelSem;
+    friend class KernelEv;
 
     static void threadPut (PCB *thread);
     static void threadPriorityPut (PCB *thread);
@@ -101,10 +102,11 @@ private:
     //                 running (current user thread)
     //                 runningKernelThread (kernel thread for processing system calls)
     static volatile PCB *idle, *running, *runningKernelThread;
-    // Thread lists: prioritized (contains the prioritized threads which will be run
+    // Thread lists: sleeping (contains the threads that are blocked with the sleep method)
+    //               prioritized (contains the prioritized threads which will be run
     //                            before any thread in the scheduler)
-    //               sleeping (contains the threads that are blocked with the sleep method)
-    static volatile PCB *prioritized, *sleeping;
+    static volatile PCB *sleeping;
+    static PCBQueue *prioritized;
 };
 
 #endif /* _SYSTEM_H_ */
