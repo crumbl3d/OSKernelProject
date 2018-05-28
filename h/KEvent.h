@@ -74,10 +74,8 @@ public:
 private:
     friend class System;
     
-    // System data: mEvent (pointer to the kernel event)
-    //              mOldRoutine (pointer to the old interrupt routine)
+    // System data: mOldRoutine (pointer to the old interrupt routine)
     //              mIVTNo (unique ID of this kernel event)
-    KernelEv *mEvent;
     InterruptRoutine mOldRoutine;
     IVTNo mIVTNo;
 

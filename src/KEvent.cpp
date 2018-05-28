@@ -46,14 +46,15 @@ void KernelEv::wait ()
     #ifndef BCC_BLOCK_IGNORE
     System::lock();
     #endif
-    if (System::running == mCreator)
+    // printf("Waiting for the event %d! Running ID = %d Creator ID = %d\n", mIVTNo, System::running->mID, mCreator->mID);
+    if (System::running->mID == mCreator->mID)
     {
+        // printf("IDs match!\n");
         if (mValue) mValue = 0;
         else
         {
             // printf("Blocking the thread with the ID %d!\n", mCreator->mID);
-            mValue = -1;
-            System::running->mState = ThreadState::Blocked;
+            mCreator->mState = ThreadState::Blocked;
             System::dispatch();
         }
     }
@@ -68,11 +69,10 @@ void KernelEv::signal ()
     #ifndef BCC_BLOCK_IGNORE
     System::lock();
     #endif
-    if (mValue >= 0) mValue = 1;
+    if (mCreator->mState != ThreadState::Blocked) mValue = 1;
     else
     {
         // printf("Deblocking the thread with the ID %d!\n", mCreator->mID);
-        mValue = 0;
         mCreator->mState = ThreadState::Running;
         System::threadPriorityPut(mCreator);
     }
@@ -97,6 +97,7 @@ void KernelEv::initialize (Event *userEv, IVTNo ivtNo)
 {
     mValue = 0;
     mEvent = userEv;
+    // printf("Initializing mCreator to thread ID = %d\n", System::running->mID);
     mCreator = (PCB*) System::running;
     mIVTNo = ivtNo;
     objects[mIVTNo] = this;
@@ -111,8 +112,6 @@ IVTEntry::IVTEntry (IVTNo ivtNo, InterruptRoutine routine)
     setvect(ivtNo, routine);
     asmUnlock();
     #endif
-    mEvent = KernelEv::at(ivtNo);
-    if (!mEvent) mEvent = new KernelEv(ivtNo);
     objects[mIVTNo] = this;
 }
 
@@ -123,7 +122,6 @@ IVTEntry::~IVTEntry ()
     setvect(mIVTNo, mOldRoutine);
     asmUnlock();
     #endif
-    if (mEvent) delete mEvent;
     objects[mIVTNo] = 0;
 }
 

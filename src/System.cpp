@@ -64,11 +64,11 @@ void System::initialize()
     running->mState = ThreadState::Running;
     runningKernelThread->mState = ThreadState::Running;
 
-    running->mTimeSlice = 20; // remove this as time goes on
+    //running->mTimeSlice = 20; // remove this as time goes on
 
     // Initializing system variables.
     tickCount = running->mTimeSlice;
-
+    
     // Initializing internal thread lists.
     prioritized = new PCBQueue();
 
@@ -132,7 +132,7 @@ void System::threadPriorityPut(PCB *thread)
     thread->mState = ThreadState::Ready;
     readyThreadCount++;
     prioritized->put(thread);
-    // printf("Put: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
+    // printf("Priority put: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
     #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
@@ -182,9 +182,7 @@ void interrupt System::newTimerRoutine(...)
     {
         // Runs this code only if this is a normal timer tick.
         tick();
-        #ifndef BCC_BLOCK_IGNORE
-        asmInterrupt(NewTimerEntry);
-        #endif
+        // printf("Timer tickCount=%d\n", tickCount);
         if (tickCount > 0) --tickCount;
         if (sleeping && --sleeping->mTimeLeft == 0)
         {
@@ -199,6 +197,9 @@ void interrupt System::newTimerRoutine(...)
                 temp->mNext = 0;
             }
         }
+		#ifndef BCC_BLOCK_IGNORE
+		asmInterrupt(NewTimerEntry);
+		#endif
         // DEBUG INFO! REMOVE!!!
         // if (sleeping)
         // {
@@ -270,6 +271,7 @@ void interrupt System::sysCallRoutine(...)
             threadPut((PCB*) running);
             running = threadGet();
             tickCount = running->mTimeSlice;
+            // printf("System tickCount=%d\n", tickCount);
             systemChangeContext = 0;
         }
 
@@ -295,7 +297,9 @@ void interrupt System::sysCallRoutine(...)
         };
         callData = (SysCallData*) MK_FP(tempSEG, tempOFF);
         #endif
-    
+
+        // printf("Running thread %d system call!\n", running->mID);
+
         // Saving the context of the user thread.
         #ifndef BCC_BLOCK_IGNORE
         asm mov tempREG, ss;
@@ -305,7 +309,6 @@ void interrupt System::sysCallRoutine(...)
         asm mov tempREG, bp;
         running->mBP = tempREG;
         #endif
-
 
         // Restoring the context of the kernel thread.
         #ifndef BCC_BLOCK_IGNORE
@@ -318,6 +321,7 @@ void interrupt System::sysCallRoutine(...)
         #endif
 
         tickCount = runningKernelThread->mTimeSlice;
+        // printf("Kernel tickCount=%d\n", tickCount);
         kernelMode = 1;
     }
 }
@@ -418,7 +422,7 @@ void System::kernelBody()
         }
         case RequestType::SSignal:
         {
-            // printf("Signaling the semaphore!\n");
+        	// printf("Signaling the semaphore!\n");
             KernelSem *sem = KernelSem::at((ID) callData->object);
             if (sem == 0) printf("Invalid semaphore ID!\n");
             else sem->signal();
@@ -435,7 +439,7 @@ void System::kernelBody()
         // Event specific requests
         case RequestType::ECreate:
         {
-            printf("Creating a new event!\n");
+            // printf("Creating a new event!\n");
             KernelEv *event = KernelEv::at((IVTNo) callData->number);
             if (event) event->mEvent = (Event*) callData->object;
             else event = new KernelEv((Event*) callData->object, callData->number);
@@ -444,7 +448,7 @@ void System::kernelBody()
         }
         case RequestType::EDestroy:
         {
-            printf("Destroying the event!\n");
+            // printf("Destroying the event!\n");
             KernelEv *event = KernelEv::at((IVTNo) callData->object);
             if (event == 0) printf("Invalid event ID!\n");
             else delete event;
@@ -460,7 +464,7 @@ void System::kernelBody()
         }
         case RequestType::ESignal:
         {
-            printf("Signaling the event!\n");
+            // printf("Signaling the event!\n");
             KernelEv *event = KernelEv::at((IVTNo) callData->object);
             if (event == 0) printf("Invalid event ID!\n");
             else event->signal();
