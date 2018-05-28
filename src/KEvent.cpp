@@ -6,7 +6,7 @@
  */
 
 #include <dos.h>
-#include <stdio.h>
+// #include <stdio.h>
 #include <stdlib.h>
 
 #include "Macro.h"
@@ -84,8 +84,8 @@ void KernelEv::signal ()
 
 void KernelEv::callSignal ()
 {
-    if (mEvent) mEvent->signal(); // User event (calls on kernel thread).
-    else signal(); // Kernel event.
+    if (System::kernelMode || !mEvent) signal();
+    else mEvent->signal();
 }
 
 KernelEv* KernelEv::at (unsigned char index)
