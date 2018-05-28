@@ -7,7 +7,6 @@
 
 #include <dos.h>
 #include <mem.h>
-// #include <stdio.h>
 #include <stdlib.h>
 
 #include "Macro.h"
@@ -44,12 +43,6 @@ PCB::~PCB ()
     #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
-    // printf("ID to delete: %d\n", mID);
-    // #ifndef BCC_BLOCK_IGNORE
-    // if (objects)
-    //     for (unsigned i = 0; i < count; ++i)
-    //         printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
-    // #endif
 }
 
 void PCB::start ()
@@ -80,13 +73,11 @@ void PCB::stop ()
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     #endif
-    // printf("Stopping the thread with ID = %d!\n", System::running->mID);
     System::running->mState = ThreadState::Terminated;
     // Deblocking any blocked threads by setting their state to Ready,
     // and putting them into the scheduler.
     while (System::running->mBlocked)
     {
-        // printf("Deblocking the thread with ID = %d!\n", System::running->mBlocked->mID);
         System::running->mBlocked->mState = ThreadState::Running;
         System::threadPut(System::running->mBlocked);
         temp = System::running->mBlocked;
@@ -125,12 +116,6 @@ void PCB::sleep (unsigned timeToSleep)
         if (current) current->mTimeLeft -= temp->mTimeLeft;
         temp->mNext = current;
         current = (PCB*) System::sleeping;
-        // printf("Printing the list of sleeping threads!\n");
-        // while (current)
-        // {
-        //     printf("ID = %d TimeLeft = %d\n", current->mID, current->mTimeLeft);
-        //     current = current->mNext;
-        // }
         System::dispatch();
         #ifndef BCC_BLOCK_IGNORE
         asmUnlock();
@@ -201,7 +186,6 @@ void PCB::initialize (Thread *userThread, ThreadBody body,
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
         #endif
-        // printf("Resizing thread object array!\n");
         PCB **newObjects = (PCB**) calloc(capacity << 1, sizeof(PCB*));
         if (objects)
         {
@@ -213,18 +197,11 @@ void PCB::initialize (Thread *userThread, ThreadBody body,
             objects = newObjects;
             capacity <<= 1;
         }
-        // else printf("Failed to resize thread object array!\n");
         #ifndef BCC_BLOCK_IGNORE
         asmUnlock();
         #endif
     }
     if (objects)  objects[mID] = this;
-    // DEBUG ONLY!!! REMOVE!!!
-    // #ifndef BCC_BLOCK_IGNORE
-    // for (unsigned i = 0; i < count; ++i)
-    //     printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
-    // #endif
-    // else printf("Invalid thread object array!\n");
 }
 
 PCBQueue::PCBQueue () : mFirst(0), mLast(0) {}

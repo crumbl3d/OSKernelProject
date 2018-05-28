@@ -6,7 +6,6 @@
  */
 
 #include <dos.h>
-// #include <stdio.h>
 #include <stdlib.h>
 
 #include "Schedule.h"
@@ -64,8 +63,6 @@ void System::initialize()
     running->mState = ThreadState::Running;
     runningKernelThread->mState = ThreadState::Running;
 
-    //running->mTimeSlice = 20; // remove this as time goes on
-
     // Initializing system variables.
     tickCount = running->mTimeSlice;
     
@@ -117,7 +114,6 @@ void System::threadPut(PCB *thread)
     thread->mState = ThreadState::Ready;
     readyThreadCount++;
     Scheduler::put(thread);
-    // printf("Put: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
     #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
@@ -132,7 +128,6 @@ void System::threadPriorityPut(PCB *thread)
     thread->mState = ThreadState::Ready;
     readyThreadCount++;
     prioritized->put(thread);
-    // printf("Priority put: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
     #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
@@ -152,7 +147,6 @@ PCB* System::threadGet()
     // scheduler and set the thread state to Running.
     if (readyThreadCount) readyThreadCount--;
     thread->mState = ThreadState::Running;
-    // printf("Get: ID = %d, timeSlice = %d\n", thread->mID, thread->mTimeSlice);
     #ifndef BCC_BLOCK_IGNORE
     asmUnlock();
     #endif
@@ -182,14 +176,11 @@ void interrupt System::newTimerRoutine(...)
     {
         // Runs this code only if this is a normal timer tick.
         tick();
-        // printf("Timer tickCount=%d\n", tickCount);
         if (tickCount > 0) --tickCount;
         if (sleeping && --sleeping->mTimeLeft == 0)
         {
-            // printf("Preparing to wake up some threads!\n");
             while (sleeping && sleeping->mTimeLeft == 0)
             {
-                // printf("Waking up the thread with ID = %d!\n", sleeping->mID);
                 sleeping->mState = ThreadState::Running;
                 threadPut((PCB*) sleeping);
                 temp = sleeping;
@@ -200,17 +191,6 @@ void interrupt System::newTimerRoutine(...)
 		#ifndef BCC_BLOCK_IGNORE
 		asmInterrupt(NewTimerEntry);
 		#endif
-        // DEBUG INFO! REMOVE!!!
-        // if (sleeping)
-        // {
-        //     temp = sleeping;
-        //     printf("Printing the list of sleeping threads!\n");
-        //     while (temp)
-        //     {
-        //         printf("ID = %d TimeLeft = %d\n", temp->mID, temp->mTimeLeft);
-        //         temp = temp->mNext;
-        //     }
-        // }
     }
     // If an explicit context change is required or if the time slice is done
     // and either preemption is allowed and there is at least one Ready thread,
@@ -271,7 +251,6 @@ void interrupt System::sysCallRoutine(...)
             threadPut((PCB*) running);
             running = threadGet();
             tickCount = running->mTimeSlice;
-            // printf("System tickCount=%d\n", tickCount);
             systemChangeContext = 0;
         }
 
@@ -298,8 +277,6 @@ void interrupt System::sysCallRoutine(...)
         callData = (SysCallData*) MK_FP(tempSEG, tempOFF);
         #endif
 
-        // printf("Running thread %d system call!\n", running->mID);
-
         // Saving the context of the user thread.
         #ifndef BCC_BLOCK_IGNORE
         asm mov tempREG, ss;
@@ -321,7 +298,6 @@ void interrupt System::sysCallRoutine(...)
         #endif
 
         tickCount = runningKernelThread->mTimeSlice;
-        // printf("Kernel tickCount=%d\n", tickCount);
         kernelMode = 1;
     }
 }
@@ -345,136 +321,105 @@ void System::kernelBody()
     {
         // Interrupts are allowed, but preemption must be blocked!
         forbidPreemption = 1;
-        // printf("Running kernel thread!\n");
         switch (callData->reqType)
         {
         // Thread specific requests
         case RequestType::TCreate:
         {
-            // printf("Creating a new thread!\n");
             PCB *thread = new PCB((Thread*) callData->object, callData->size, callData->time);
-            // if (!thread) printf("Failed to create a Thread object!\n");
             if (thread) callResult = (volatile void*) thread->mID;
             break;
         }
         case RequestType::TDestroy:
         {
-            // printf("Destroying the thread!\n");
             PCB *thread = PCB::at((ID) callData->object);
-            // if (!thread) printf("Invalid thread ID - destroy!\n");
             if (thread) delete thread;
             break;
         }
         case RequestType::TStart:
         {
-            // printf("Starting the thread!\n");
             PCB *thread = PCB::at((ID) callData->object);
-            // if (!thread) printf("Invalid thread ID - start!\n");
             if (thread) thread->start();
             break;
         }
         case RequestType::TStop:
         {
-            // printf("Stopping the running thread!\n");
             PCB::stop();
             break;
         }
         case RequestType::TWaitToComplete:
         {
-            // printf("Blocking the running thread on another thread!\n");
             PCB *thread = PCB::at((ID) callData->object);
-            // if (!thread) printf("Invalid thread ID - wait to complete!\n");
             if (thread) thread->waitToComplete();
             break;
         }
         case RequestType::TSleep:
         {
-            // printf("Putting the running thread to sleep!\n");
             PCB::sleep(callData->time);
             break;
         }
         case RequestType::TDispatch:
         {
-            // printf("Dispatching!\n");
             systemChangeContext = 1;
             break;
         }
         // Semaphore specific requests
         case RequestType::SCreate:
         {
-            // printf("Creating a new semaphore!\n");
             KernelSem *sem = new KernelSem((Semaphore*) callData->object, callData->number);
-            // if (!sem) printf("Failed to create a Semaphore object!\n");
             if (sem) callResult = (volatile void*) sem->mID;
             break;
         }
         case RequestType::SDestroy:
         {
-            // printf("Destroying the semaphore!\n");
             KernelSem *sem = KernelSem::at((ID) callData->object);
-            // if (!sem) printf("Invalid semaphore ID - destroy!\n");
             if (sem) delete sem;
             break;
         }
         case RequestType::SWait:
         {
-            // printf("Waiting on the semaphore!\n");
             KernelSem *sem = KernelSem::at((ID) callData->object);
-            // if (!sem) printf("Invalid semaphore ID - wait!\n");
             if (sem) callResult = (volatile void*) sem->wait(callData->number);
             break;
         }
         case RequestType::SSignal:
         {
-        	// printf("Signaling the semaphore!\n");
             KernelSem *sem = KernelSem::at((ID) callData->object);
-            // if (!sem) printf("Invalid semaphore ID - signal!\n");
             if (sem) sem->signal();
             break;
         }
         case RequestType::SValue:
         {
-            // printf("Getting the semaphore value!\n");
             KernelSem *sem = KernelSem::at((ID) callData->object);
-            // if (!sem) printf("Invalid semaphore ID - value!\n");
             if (sem) callResult = (volatile void*) sem->val();
             break;
         }
         // Event specific requests
         case RequestType::ECreate:
         {
-            // printf("Creating a new event!\n");
             KernelEv *event = KernelEv::at((IVTNo) callData->number);
             if (event) event->mEvent = (Event*) callData->object;
             else event = new KernelEv((Event*) callData->object, callData->number);
-            // if (!event) printf("Failed to create an Event object!\n");
             break;
         }
         case RequestType::EDestroy:
         {
-            // printf("Destroying the event!\n");
             KernelEv *event = KernelEv::at((IVTNo) callData->object);
-            // if (!event) printf("Invalid event ID - destroy!\n");
             if (event) delete event;
             break;
         }
         case RequestType::EWait:
         {
-            // printf("Waiting for the event!\n");
             KernelEv *event = KernelEv::at((IVTNo) callData->object);
-            // if (!event) printf("Invalid event ID - wait!\n");
             if (event) event->wait();
             break;
         }
         case RequestType::ESignal:
         {
-            // printf("Signaling the event!\n");
             KernelEv *event = KernelEv::at((IVTNo) callData->object);
-            // if (!event) printf("Invalid event ID - signal!\n");
             if (event) event->signal();
             break;
         }
-        // default: printf("Invalid system call request type!\n");
         }
         #ifndef BCC_BLOCK_IGNORE
         asmInterrupt(SysCallEntry);

@@ -6,7 +6,6 @@
  */
 
 #include <dos.h>
-// #include <stdio.h>
 #include <stdlib.h>
 
 #include "Macro.h"
@@ -34,7 +33,6 @@ KernelEv::~KernelEv ()
     // Deblock the blocked thread.
     if (mValue == -1)
     {
-        // printf("Deblocking the thread with the ID %d!\n", mCreator->mID);
         mCreator->mState = ThreadState::Running;
         System::threadPut(mCreator);
     }
@@ -46,19 +44,15 @@ void KernelEv::wait ()
     #ifndef BCC_BLOCK_IGNORE
     System::lock();
     #endif
-    // printf("Waiting for the event %d! Running ID = %d Creator ID = %d\n", mIVTNo, System::running->mID, mCreator->mID);
     if (System::running->mID == mCreator->mID)
     {
-        // printf("IDs match!\n");
         if (mValue) mValue = 0;
         else
         {
-            // printf("Blocking the thread with the ID %d!\n", mCreator->mID);
             mCreator->mState = ThreadState::Blocked;
             System::dispatch();
         }
     }
-    // printf("Wait: Event value = %d!\n", mValue);
     #ifndef BCC_BLOCK_IGNORE
     System::unlock();
     #endif
@@ -72,11 +66,9 @@ void KernelEv::signal ()
     if (mCreator->mState != ThreadState::Blocked) mValue = 1;
     else
     {
-        // printf("Deblocking the thread with the ID %d!\n", mCreator->mID);
         mCreator->mState = ThreadState::Running;
         System::threadPriorityPut(mCreator);
     }
-    // printf("Signal: Event value = %d!\n", mValue);
     #ifndef BCC_BLOCK_IGNORE
     System::unlock();
     #endif
@@ -97,7 +89,6 @@ void KernelEv::initialize (Event *userEv, IVTNo ivtNo)
 {
     mValue = 0;
     mEvent = userEv;
-    // printf("Initializing mCreator to thread ID = %d\n", System::running->mID);
     mCreator = (PCB*) System::running;
     mIVTNo = ivtNo;
     objects[mIVTNo] = this;

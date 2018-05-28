@@ -6,7 +6,6 @@
  */
 
 #include <mem.h>
-// #include <stdio.h>
 #include <stdlib.h>
 
 #include "Macro.h"
@@ -44,7 +43,6 @@ int KernelSem::wait (int toBlock)
         block();
         result = 1;
     }
-    // printf("Wait: Semaphore value = %d!\n", mValue);
     #ifndef BCC_BLOCK_IGNORE
     System::unlock();
     #endif
@@ -57,7 +55,6 @@ void KernelSem::signal ()
     System::lock();
     #endif
     if (mValue++ < 0) deblock();
-    // printf("Signal: Semaphore value = %d!\n", mValue);
     #ifndef BCC_BLOCK_IGNORE
     System::unlock();
     #endif
@@ -79,7 +76,6 @@ void KernelSem::block ()
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     #endif
-    // printf("Blocking the thread with the ID %d!\n", System::running->mID);
     System::running->mState = ThreadState::Blocked;
     mBlocked->put((PCB*) System::running);
     System::dispatch();
@@ -96,7 +92,6 @@ void KernelSem::deblock ()
     PCB *thread = mBlocked->get();
     if (thread)
     {
-        // printf("Deblocking the thread with the ID %d!\n", thread->mID);
         thread->mState = ThreadState::Running;
         System::threadPut(thread);
     }
@@ -116,7 +111,6 @@ void KernelSem::initialize (Semaphore *userSem, int init)
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
         #endif
-        // printf("Resizing semaphore object array!\n");
         KernelSem **newObjects = (KernelSem**) calloc(capacity << 1, sizeof(KernelSem*));
         if (objects)
         {
@@ -128,16 +122,9 @@ void KernelSem::initialize (Semaphore *userSem, int init)
             objects = newObjects;
             capacity <<= 1;
         }
-        // else printf("Failed to resize semaphore object array!\n");
         #ifndef BCC_BLOCK_IGNORE
         asmUnlock();
         #endif
     }
     if (objects)  objects[mID] = this;
-    // DEBUG ONLY!!! REMOVE!!!
-    // #ifndef BCC_BLOCK_IGNORE
-    // for (unsigned i = 0; i < count; ++i)
-    //     printf("object[%d]: SEG = %d OFF = %d\n", i, FP_SEG(objects[i]), FP_OFF(objects[i]));
-    // #endif
-    // else printf("Invalid semaphore object array!\n");
 }
