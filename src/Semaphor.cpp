@@ -43,11 +43,14 @@ int Semaphore::wait (int toBlock)
     data.reqType = RequestType::SWait;
     data.object = (void*) mID;
     data.number = toBlock;
+    int result = 0;
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     sysCall(data);
+    result = (int) System::getCallResult();
     asmUnlock();
     #endif
+    return result;
 }
 
 void Semaphore::signal ()

@@ -94,8 +94,6 @@ void tick ()
     // printf("*");
 }
 
-int result;
-
 int main (int argc, char* argv[])
 {
     System::initialize();
@@ -103,7 +101,7 @@ int main (int argc, char* argv[])
     printf("|--------------------------| Simple kernel project |--------------------------|\n");
     printf("===============================================================================\n");
     printf("> Starting function userMain!\n");
-    result = userMain(argc, argv);
+    int result = userMain(argc, argv);
     printf("> Function userMain returned: %d\n", result);
     printf("===============================================================================\n");
     printf("|-------------------------| Jovan Nikolov 2016/0040 |-------------------------|\n");

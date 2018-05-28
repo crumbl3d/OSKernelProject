@@ -413,7 +413,7 @@ void System::kernelBody()
             // printf("Waiting on the semaphore!\n");
             KernelSem *sem = KernelSem::at((ID) callData->object);
             if (sem == 0) printf("Invalid semaphore ID!\n");
-            else sem->wait(callData->number);
+            else callResult = (volatile void*) sem->wait(callData->number);
             break;
         }
         case RequestType::SSignal:
@@ -435,8 +435,8 @@ void System::kernelBody()
         // Event specific requests
         case RequestType::ECreate:
         {
-            // printf("Creating a new event!\n");
-            KernelEv *event = KernelEv::at(callData->number);
+            printf("Creating a new event!\n");
+            KernelEv *event = KernelEv::at((IVTNo) callData->number);
             if (event) event->mEvent = (Event*) callData->object;
             else event = new KernelEv((Event*) callData->object, callData->number);
             if (event == 0) printf("Failed to create an Event object!\n");
@@ -444,8 +444,8 @@ void System::kernelBody()
         }
         case RequestType::EDestroy:
         {
-            // printf("Destroying the event!\n");
-            KernelEv *event = KernelEv::at(callData->number);
+            printf("Destroying the event!\n");
+            KernelEv *event = KernelEv::at((IVTNo) callData->object);
             if (event == 0) printf("Invalid event ID!\n");
             else delete event;
             break;
@@ -453,15 +453,15 @@ void System::kernelBody()
         case RequestType::EWait:
         {
             // printf("Waiting for the event!\n");
-            KernelEv *event = KernelEv::at(callData->number);
+            KernelEv *event = KernelEv::at((IVTNo) callData->object);
             if (event == 0) printf("Invalid event ID!\n");
             else event->wait();
             break;
         }
         case RequestType::ESignal:
         {
-            // printf("Signaling the event!\n");
-            KernelEv *event = KernelEv::at(callData->number);
+            printf("Signaling the event!\n");
+            KernelEv *event = KernelEv::at((IVTNo) callData->object);
             if (event == 0) printf("Invalid event ID!\n");
             else event->signal();
             break;

@@ -13,6 +13,7 @@
 
 Event::Event (IVTNo ivtNo)
 {
+    mIVTNo = ivtNo;
     SysCallData data;
     data.reqType = RequestType::ECreate;
     data.object = this;
@@ -20,7 +21,6 @@ Event::Event (IVTNo ivtNo)
     #ifndef BCC_BLOCK_IGNORE
     asmLock();
     sysCall(data);
-    mIVTNo = (IVTNo) System::getCallResult();
     asmUnlock();
     #endif
 }
