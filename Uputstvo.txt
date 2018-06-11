@@ -52,6 +52,16 @@ PS: Ovim bih da se zahvalim Konstantinu Djordjevicu na velikoj pomoci u realizac
 
 Verzije:
 
+1.3 (12-06-2018):
+    Dodati regularni izrazi za oznacavanje gresaka pri kompajliranju. Implementirana
+    jos jedna zaobilaznica za linker koji bi sada trebalo da radi i pri ukljucivanju
+    javnog testa. Naravno, jos uvek postoji ogranicenje za broj fajlova koji se moze
+    odjednom linkovati tako da bi bilo pozeljno drzati taj broj ispod okvirno 20.
+    Teoretski je moguce jos malo povecati tu granicu ako se umesto cifara koriste i
+    slova i cifre ali to je nezgodno napisati u batch-u. Za potrebe ovog projekta bi
+    trebalo da je ovo ogranicenje sasvim dovoljno. Ukoliko se ponovo probije ovo
+    ogranicenje i linker ne bude mogao da se pozove, ovo je jedina solucija koja moze
+    jos malo povecati broj fajlova (na otprilike 40-ak).
 1.2.1 (23-05-2018):
     Ispravka Build and Run task-a. Naime, ukoliko je postojala stara verzija projekta,
     a nova verzija se nije uspesno kompajlirala, task je pokretao staru verziju, sto

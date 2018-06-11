@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "Win32",
+            "name": "BCC",
             "browse": {
                 "path": [
                     "C:\\bc31\\INCLUDE",
@@ -15,12 +15,7 @@
                 "${workspaceFolder}\\h",
                 "${workspaceFolder}"
             ],
-            "defines": [
-                "BCC_BLOCK_IGNORE",
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
-            ],
+            "defines": [ "BCC_BLOCK_IGNORE" ],
             "cStandard": "c89",
             "cppStandard": "c++98",
             "intelliSenseMode": "msvc-x64"

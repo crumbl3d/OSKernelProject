@@ -93,12 +93,11 @@ $(TARGET): $(OBJ)
 	@-md $(WOUTPUTPATH) 2> nul & ver > nul
 	@copy $(WOBJPATH)\*.OBJ $(WOUTPUTPATH) > nul
 	@copy $(WLIBPATH)\*.LIB $(WOUTPUTPATH) > nul
-	@copy $(WCLIBPATH)\C0$M.OBJ $(WOUTPUTPATH) > nul
-	@copy $(WCLIBPATH)\C$M.LIB $(WOUTPUTPATH) > nul
-	@copy $(WCLIBPATH)\EMU.LIB $(WOUTPUTPATH) > nul
-	@copy $(WCLIBPATH)\MATH$M.LIB $(WOUTPUTPATH) > nul
-	@-cd $(WOUTPUTPATH) 2> nul & \
-	@call $(TLINK) $(TLINKFLAGS) $(OBJNAMES),$(TARGETNAME),,$(LIBNAMES)
+	@copy $(WCLIBPATH)\C0$M.OBJ $(WOUTPUTPATH)\0.obj > nul
+	@copy $(WCLIBPATH)\C$M.LIB $(WOUTPUTPATH)\0.lib > nul
+	@copy $(WCLIBPATH)\EMU.LIB $(WOUTPUTPATH)\1.lib > nul
+	@copy $(WCLIBPATH)\MATH$M.LIB $(WOUTPUTPATH)\2.lib > nul
+	@call calltlink "$(WCBINPATH)" "$(WOUTPUTPATH)" "$(TLINKFLAGS)" "$(TARGETNAME)"
 	@-del $(WOUTPUTPATH)\*.OBJ 2> nul & ver > nul
 	@-del $(WOUTPUTPATH)\*.LIB 2> nul & ver > nul
 
