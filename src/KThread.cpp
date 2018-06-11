@@ -52,8 +52,9 @@ void PCB::start ()
 
 void PCB::waitToComplete ()
 {
-    // Only block the running thread if this thread is not terminated!
-    if (mState != ThreadState::Terminated)
+    // Forbid blocking a thread on itself. Only block the
+    // running thread if this thread is not terminated!
+    if (System::running->mID != mID && mState != ThreadState::Terminated)
     {
         #ifndef BCC_BLOCK_IGNORE
         asmLock();
