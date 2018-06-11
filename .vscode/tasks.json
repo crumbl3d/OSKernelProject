@@ -5,59 +5,159 @@
             "label": "Generate Preprocessor Information",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make prep",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
+            }
         },
         {
             "label": "Clean Preprocessor Information",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make cleanprep",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": []
         },
         {
             "label": "Regenerate Preprocessor Information",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make @cleanprep prep",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
+            }
         },
         {
             "label": "Generate Assembly Information",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make asm",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
+            }
         },
         {
             "label": "Clean Assembly Information",
             "type": "shell",
-            "command": "cd ${workspaceFolder}\\make & make cleanasm"
+            "command": "cd ${workspaceFolder}\\make & make cleanasm",
+            "problemMatcher": []
         },
         {
             "label": "Regenerate Assembly Information",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make @cleanasm asm",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
+            }
         },
         {
             "label": "Compile",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make compile",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
+            }
         },
         {
             "label": "Clean Object Files",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make cleanobj",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": []
         },
         {
             "label": "Recompile",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make @cleanobj compile",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
+            }
         },
         {
             "label": "Clean Object Files",
             "type": "shell",
-            "command": "cd ${workspaceFolder}\\make & make cleanasm"
+            "command": "cd ${workspaceFolder}\\make & make cleanasm",
+            "problemMatcher": []
         },
         {
             "label": "Build",
@@ -66,18 +166,51 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
             }
         },
         {
             "label": "Clean",
             "type": "shell",
-            "command": "cd ${workspaceFolder}\\make & make clean"
+            "command": "cd ${workspaceFolder}\\make & make clean",
+            "problemMatcher": []
         },
         {
             "label": "Rebuild",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make @clean all",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
+            }
         },
         {
             "label": "Build and Run",
@@ -86,25 +219,44 @@
             "group": {
                 "kind": "test",
                 "isDefault": true
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}\\make"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                        "severity": 1,
+                        "file": 2,
+                        "line": 3,
+                        "message": 4
+                    }
+                ]
             }
         },
         {
             "label": "Run",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make run",
-            "group": "test"
+            "group": "test",
+            "problemMatcher": []
         },
         {
             "label": "Debug",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make debug",
-            "group": "test"
+            "group": "test",
+            "problemMatcher": []
         },
         {
             "label": "Debug Info",
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make debuginfo",
-            "group": "test"
+            "group": "test",
+            "problemMatcher": []
         }
     ]
 }
