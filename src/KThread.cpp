@@ -103,10 +103,8 @@ void PCB::sleep (unsigned timeToSleep)
         temp->mTimeLeft = timeToSleep;
         temp->mState = ThreadState::Blocked;
         PCB *previous = 0, *current = (PCB*) System::sleeping;
-        while (current && temp->mTimeLeft >= current->mTimeLeft)
+        while (current && temp->mTimeLeft > current->mTimeLeft)
         {
-            // No need to go through all of the same ones,
-            // just put it at the front.
             temp->mTimeLeft -= current->mTimeLeft;
             previous = current;
             current = current->mNext;
