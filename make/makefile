@@ -13,7 +13,7 @@ OUTPUTDIR		:= output
 # Here you can change program parameters.
 MEMMODEL		:= h
 TARGETNAME		:= Kernel
-TARGETARGS		:= 
+TARGETARGS		:= 10 10
 
 # GNU Make Standard Library.
 include gmsl
@@ -55,6 +55,9 @@ WASMPATH		:= $(call unix-to-dos,$(ASMPATH))
 WOBJPATH		:= $(call unix-to-dos,$(OBJPATH))
 WOUTPUTPATH		:= $(call unix-to-dos,$(OUTPUTPATH))
 
+# Stripping extension for use in messages.
+TARGETNAME		:= $(basename $(TARGETNAME))
+
 # Compiler and linker location and flags.
 # You should only ever change WCPATH.
 WCPATH			:= C:\bc31
@@ -67,12 +70,9 @@ CPPFLAGS		:= /m$(MEMMODEL) /w /I$(WHPATH);$(WINCLUDEPATH);$(WCINCLUDEPATH)
 CXX				:= $(WCBINPATH)\bcc.exe
 CXXFLAGS		:= /c /m$(MEMMODEL) /v /y /w /I$(WHPATH);$(WINCLUDEPATH);$(WCINCLUDEPATH) /L$(WLIBPATH);$(WCLIBPATH)
 TLINK			:= $(WCBINPATH)\tlink.exe
-TLINKFLAGS		:= /c /l /v /x
+TLINKFLAGS		:= /c /l /v /x /L$(WLIBPATH);$(WCLIBPATH)
 TD				:= $(WCBINPATH)\td.exe
 TDFLAGS			:= /c$(WCBINPATH)\tdconfig.td
-
-# Stripping extension for use in messages.
-TARGETNAME		:= $(basename $(TARGETNAME))
 
 # Internal generated variables. You should not change these.
 SRC				:= $(strip $(wildcard $(SRCPATH)/*.cpp) $(wildcard $(SRCPATH)/*.CPP))
@@ -86,20 +86,20 @@ TARGET			:= $(OUTPUTPATH)/$(call uc,$(TARGETNAME)).EXE
 WTARGET			:= $(call unix-to-dos,$(TARGET))
 
 M				:= $(call uc,$(MEMMODEL))
-LIBNAMES		:= $(basename $(notdir $(LIB))) C$M EMU MATH$M
-OBJNAMES		:= C0$M $(basename $(notdir $(OBJ)))
+TLINKRESPONSE	:= $(WOUTPUTPATH)\$(call uc,$(TARGETNAME)).RSP
+TLINKLIBS		:= $(basename $(notdir $(LIB))) C$M EMU MATH$M
+TLINKOBJS		:= C0$M $(basename $(call unix-to-dos,$(OBJ)))
+TLINKTARGET		:= $(basename $(call unix-to-dos,$(TARGET)))
 
-$(TARGET): $(OBJ)
+$(TARGET): $(LIB) $(OBJ)
 	@-md $(WOUTPUTPATH) 2> nul & ver > nul
-	@copy $(WOBJPATH)\*.OBJ $(WOUTPUTPATH) > nul
-	@copy $(WLIBPATH)\*.LIB $(WOUTPUTPATH) > nul
-	@copy $(WCLIBPATH)\C0$M.OBJ $(WOUTPUTPATH)\0.obj > nul
-	@copy $(WCLIBPATH)\C$M.LIB $(WOUTPUTPATH)\0.lib > nul
-	@copy $(WCLIBPATH)\EMU.LIB $(WOUTPUTPATH)\1.lib > nul
-	@copy $(WCLIBPATH)\MATH$M.LIB $(WOUTPUTPATH)\2.lib > nul
-	@call calltlink "$(WCBINPATH)" "$(WOUTPUTPATH)" "$(TLINKFLAGS)" "$(TARGETNAME)"
-	@-del $(WOUTPUTPATH)\*.OBJ 2> nul & ver > nul
-	@-del $(WOUTPUTPATH)\*.LIB 2> nul & ver > nul
+	@echo $(TLINKFLAGS) +> $(TLINKRESPONSE)
+	@echo $(TLINKOBJS)>> $(TLINKRESPONSE)
+	@echo $(TLINKTARGET)>> $(TLINKRESPONSE)
+	@echo $(TLINKTARGET)>> $(TLINKRESPONSE)
+	@echo $(TLINKLIBS)>> $(TLINKRESPONSE)
+	@call $(TLINK) @$(TLINKRESPONSE)
+	@-del $(TLINKRESPONSE) 2> nul & ver > nul
 
 $(foreach d,$(SRC),$(eval $(call generate-rules,$d)))
 
@@ -213,9 +213,10 @@ debuginfo:
 	$(info )
 	$(info WTARGET is $(WTARGET))
 	$(info )
-	$(info M is $(M))
-	$(info LIBNAMES is $(LIBNAMES))
-	$(info OBJNAMES is $(OBJNAMES))
+	$(info TLINKRESPONSE is $(TLINKRESPONSE))
+	$(info TLINKLIBS is $(TLINKLIBS))
+	$(info TLINKOBJS is $(TLINKOBJS))
+	$(info TLINKTARGET is $(TLINKTARGET))
 	$(info )
 	$(info $(foreach d,$(SRC),$(call generate-rules,$d)))
 
