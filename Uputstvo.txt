@@ -52,6 +52,11 @@ PS: Ovim bih da se zahvalim Konstantinu Djordjevicu na velikoj pomoci u realizac
 
 Verzije:
 
+1.4 (04-07-2018):
+    Linker je konacno resen jednom za svagda. Postoji ugradjena opcija (response file)
+    koja omogucuje turbo linker-u da argumente dobije iz tekstualnog fajla. Stoga je
+    trebalo samo dinamicki generisati taj fajl koriscenjem make-a. Posto je to reseno,
+    vise ne bi trebalo da postoji ogranicenje za broj fajlova koji mogu da se linkuju.
 1.3 (12-06-2018):
     Dodati regularni izrazi za oznacavanje gresaka pri kompajliranju. Implementirana
     jos jedna zaobilaznica za linker koji bi sada trebalo da radi i pri ukljucivanju
