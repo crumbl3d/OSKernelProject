@@ -90,7 +90,7 @@ void Consumer::run () {
 	while(!theEnd) {
 		char d = myBuffer->take();
 		consume(d);
-		if (i++ == 40) {
+		if (i++ == 200) {
 			Thread::sleep(5);
 			i = 0;
 		}else for(int j=0;j<200;j++);
@@ -129,7 +129,7 @@ int userMain (int argc, char* argv[])
 	}
 	int buffSize = atoi(argv[1]);
 	N = atoi(argv[2]);
-	N = N>19 ? 19 : N;
+	// N = N>19 ? 19 : N;
 	TIME_SLICE = atoi(argv[3]);
 	
 	if(buffSize<N) {

@@ -114,7 +114,6 @@ void PCB::sleep (unsigned timeToSleep)
         else System::sleeping = temp;
         if (current) current->mTimeLeft -= temp->mTimeLeft;
         temp->mNext = current;
-        current = (PCB*) System::sleeping;
         System::dispatch();
         #ifndef BCC_BLOCK_IGNORE
         asmUnlock();

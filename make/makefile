@@ -13,7 +13,7 @@ OUTPUTDIR		:= output
 # Here you can change program parameters.
 MEMMODEL		:= h
 TARGETNAME		:= Kernel
-TARGETARGS		:= 10 10
+TARGETARGS		:= 137 137 1
 
 # GNU Make Standard Library.
 include gmsl
