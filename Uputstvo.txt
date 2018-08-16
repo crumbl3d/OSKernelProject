@@ -52,6 +52,8 @@ PS: Ovim bih da se zahvalim Konstantinu Djordjevicu na velikoj pomoci u realizac
 
 Verzije:
 
+1.4.1 (16-08-2018):
+    Dodati regularni izrazi za oznacavanje gresaka pri linkovanju.
 1.4 (04-07-2018):
     Linker je konacno resen jednom za svagda. Postoji ugradjena opcija (response file)
     koja omogucuje turbo linker-u da argumente dobije iz tekstualnog fajla. Stoga je
