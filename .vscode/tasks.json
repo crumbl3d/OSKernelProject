@@ -7,7 +7,7 @@
             "command": "cd ${workspaceFolder}\\make & make prep",
             "group": "build",
             "problemMatcher": {
-                "owner": "cpp",
+                "owner": "compiler",
                 "fileLocation": [
                     "relative",
                     "${workspaceFolder}\\make"
@@ -36,7 +36,7 @@
             "command": "cd ${workspaceFolder}\\make & make @cleanprep prep",
             "group": "build",
             "problemMatcher": {
-                "owner": "cpp",
+                "owner": "compiler",
                 "fileLocation": [
                     "relative",
                     "${workspaceFolder}\\make"
@@ -58,7 +58,7 @@
             "command": "cd ${workspaceFolder}\\make & make asm",
             "group": "build",
             "problemMatcher": {
-                "owner": "cpp",
+                "owner": "compiler",
                 "fileLocation": [
                     "relative",
                     "${workspaceFolder}\\make"
@@ -86,7 +86,7 @@
             "command": "cd ${workspaceFolder}\\make & make @cleanasm asm",
             "group": "build",
             "problemMatcher": {
-                "owner": "cpp",
+                "owner": "compiler",
                 "fileLocation": [
                     "relative",
                     "${workspaceFolder}\\make"
@@ -108,7 +108,7 @@
             "command": "cd ${workspaceFolder}\\make & make compile",
             "group": "build",
             "problemMatcher": {
-                "owner": "cpp",
+                "owner": "compiler",
                 "fileLocation": [
                     "relative",
                     "${workspaceFolder}\\make"
@@ -137,7 +137,7 @@
             "command": "cd ${workspaceFolder}\\make & make @cleanobj compile",
             "group": "build",
             "problemMatcher": {
-                "owner": "cpp",
+                "owner": "compiler",
                 "fileLocation": [
                     "relative",
                     "${workspaceFolder}\\make"
@@ -167,22 +167,40 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": {
-                "owner": "cpp",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}\\make"
-                ],
-                "pattern": [
-                    {
-                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
-                        "severity": 1,
-                        "file": 2,
-                        "line": 3,
-                        "message": 4
-                    }
-                ]
-            }
+            "problemMatcher": [
+                {
+                    "owner": "compiler",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceFolder}\\make"
+                    ],
+                    "pattern": [
+                        {
+                            "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                            "severity": 1,
+                            "file": 2,
+                            "line": 3,
+                            "message": 4
+                        }
+                    ]
+                },
+                {
+                    "owner": "linker",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceFolder}\\make"
+                    ],
+                    "pattern": [
+                        {
+                            "regexp": "^(Warning|Error):\\s+(.*)in (m)odule\\s+(.*)$",
+                            "severity": 1,
+                            "message": 2,
+                            "line": 3,
+                            "file": 4
+                        }
+                    ]
+                }
+            ]
         },
         {
             "label": "Clean",
@@ -195,22 +213,40 @@
             "type": "shell",
             "command": "cd ${workspaceFolder}\\make & make @clean all",
             "group": "build",
-            "problemMatcher": {
-                "owner": "cpp",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}\\make"
-                ],
-                "pattern": [
-                    {
-                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
-                        "severity": 1,
-                        "file": 2,
-                        "line": 3,
-                        "message": 4
-                    }
-                ]
-            }
+            "problemMatcher": [
+                {
+                    "owner": "compiler",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceFolder}\\make"
+                    ],
+                    "pattern": [
+                        {
+                            "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                            "severity": 1,
+                            "file": 2,
+                            "line": 3,
+                            "message": 4
+                        }
+                    ]
+                },
+                {
+                    "owner": "linker",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceFolder}\\make"
+                    ],
+                    "pattern": [
+                        {
+                            "regexp": "^(Warning|Error):\\s+(.*)in (m)odule\\s+(.*)$",
+                            "severity": 1,
+                            "message": 2,
+                            "line": 3,
+                            "file": 4
+                        }
+                    ]
+                }
+            ]
         },
         {
             "label": "Build and Run",
@@ -220,22 +256,40 @@
                 "kind": "test",
                 "isDefault": true
             },
-            "problemMatcher": {
-                "owner": "cpp",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}\\make"
-                ],
-                "pattern": [
-                    {
-                        "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
-                        "severity": 1,
-                        "file": 2,
-                        "line": 3,
-                        "message": 4
-                    }
-                ]
-            }
+            "problemMatcher": [
+                {
+                    "owner": "compiler",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceFolder}\\make"
+                    ],
+                    "pattern": [
+                        {
+                            "regexp": "^(Warning|Error)\\s+([^\\s]*)\\s+(\\d+)\\:\\s+(.*)$",
+                            "severity": 1,
+                            "file": 2,
+                            "line": 3,
+                            "message": 4
+                        }
+                    ]
+                },
+                {
+                    "owner": "linker",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceFolder}\\make"
+                    ],
+                    "pattern": [
+                        {
+                            "regexp": "^(Warning|Error):\\s+(.*)in (m)odule\\s+(.*)$",
+                            "severity": 1,
+                            "message": 2,
+                            "line": 3,
+                            "file": 4
+                        }
+                    ]
+                }
+            ]
         },
         {
             "label": "Run",
